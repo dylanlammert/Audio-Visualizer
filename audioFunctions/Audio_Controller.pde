@@ -27,12 +27,18 @@ class AudioController
     Audio source management
     This seems to be a minim based approoach sound library will require a different approach
     */ 
-    String song_name;//argument to be fed to the Audio controller
-    //create a Minim audio player object
-    //player.loadFile("fname.mp3") // loads a audio file into the player
-    
-    FFT fft; //fourier transform object
+    String song_name; //Eventually an argument right now test audio
+    SoundFile audio; 
 
+    int num_freq = 8; //required to be a power of 2 for the FFT to work
+    FFT fft; //fourier transform object
+    
+
+    float [] frequencies = new float[num_freq]; // Stores frequency band amplitudes from the FFT
+    private float [] freq_volume = new float [num_freq]; //volumes for each frequency band
+    float master_volume = 1;
+    
+    float[] peak = new float[num_freq]; // used to compare recent audio intensity levels for scaling to the the standard range
 
     /*
     Outgoing Audio data
@@ -79,4 +85,31 @@ class AudioController
 
     */
 
+    //Loads song file into the Controller
+    void loadSong (PApplet app, String fname) // For the applet just type 'this' to get a reference to the running process
+    {
+        audio = new SoundFile(app, fname);
+        fft.input(audio);
+    }
+
+    //Constructor for the Controller
+    AudioController(PApplet app, String fname) // For the applet just type 'this' to get a reference to the running process
+    {
+        fft = new FFT(app, num_freq);
+        
+        song_name = fname;
+        loadSong(app, song_name);
+
+        for (int i = 0; i < freq_volume.length; i++) freq_volume[i] = 1; //initizlize frequency band volume
+    }
+
+    void update()
+    {
+        frequencies = fft.analyze(frequencies);//stores the frequency bands. Needs rescaled values will be ~ .05
+        float currentPeak = max(frequencies); //highest volume in current sample
+
+        
+
+    }
+        
 }
