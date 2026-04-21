@@ -1,7 +1,4 @@
 import processing.sound.*;
-import ddf.minim.*;
-
-Minim minim;
 /* 
 
 This class reads the input audio file and updates Data fields per frame
@@ -31,7 +28,7 @@ class AudioController
     This seems to be a minim based approoach sound library will require a different approach
     */ 
     String song_name;//argument to be fed to the Audio controller
-    AudioPlayer player; //create a Minim audio player object
+    //create a Minim audio player object
     //player.loadFile("fname.mp3") // loads a audio file into the player
     
     FFT fft; //fourier transform object
