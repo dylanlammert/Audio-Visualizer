@@ -35,6 +35,7 @@ class AudioController
     
 
     float [] frequencies = new float[num_freq]; // Stores frequency band amplitudes from the FFT
+    float [] smooth = new float[num_freq];
     private float [] freq_volume = new float [num_freq]; //volumes for each frequency band
     float master_volume = 1;
     
@@ -101,15 +102,35 @@ class AudioController
         loadSong(app, song_name);
 
         for (int i = 0; i < freq_volume.length; i++) freq_volume[i] = 1; //initizlize frequency band volume
+        for (int i = 0; i < smooth.length; i++) smooth[i] = 0;
+        for (int i = 0; i < peak.length; i++) peak[i] = 1;
     }
 
     void update()
     {
         frequencies = fft.analyze(frequencies);//stores the frequency bands. Needs rescaled values will be ~ .05
-        float currentPeak = max(frequencies); //highest volume in current sample
+        float[] normalized = new float[num_freq];
 
+        for (int i = 0; i < num_freq; i++) //normalize each frequency band in a range of 0-1
+        {
+            //adaptively chooses a highest volume.
+            //If old peak is chosen it will slowly decay 
+            //to react to volume shifts in the music
+            peak[i] = max((peak[i] * .9), frequencies[i]); 
+            peak[i] = max(peak[i], .001);  //protect div by zero
+
+
+            normalized[i] =  frequencies[i]/peak[i]; //rescales to a range 0 - 1 based on relative loudness to recent samples
+            constrain(normalized[i], 0, 1);  //just in case I'm not seeing something
+
+            smooth[i] = lerp(smooth[i], normalized[i], .05);
+        }
         
 
     }
-        
+    
+    void start()
+    {
+        audio.play();
+    }
 }
