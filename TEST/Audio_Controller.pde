@@ -30,12 +30,17 @@ class AudioController
     String song_name; //Eventually an argument right now test audio
     SoundFile audio; 
 
-    int num_freq = 8; //required to be a power of 2 for the FFT to work
+    int num_freq = 4096; //required to be a power of 2 for the FFT to work
     FFT fft; //fourier transform object
     
 
-    float [] frequencies = new float[num_freq]; // Stores frequency band amplitudes from the FFT
-    float [] smooth = new float[num_freq];
+    private float [] frequencies = new float[num_freq]; // Stores frequency  amplitudes from the FFT
+    private float [] smooth = new float[num_freq]; //stores smoothed out FFT values
+
+    int num_bands = 12;
+    float [] bands = new float[num_bands]; //containts finally logarithmically adjusted frequencies bands
+
+
     private float [] freq_volume = new float [num_freq]; //volumes for each frequency band
     float master_volume = 1;
     
@@ -124,9 +129,43 @@ class AudioController
             constrain(normalized[i], 0, 1);  //just in case I'm not seeing something
 
             smooth[i] = lerp(smooth[i], normalized[i], .05);
+            map_bands();
         }
         
 
+    }
+
+    /* 
+    Adjusts the FFT bins linear scale and plugs it into Bands that more closely resemble our perception
+    */ 
+    void map_bands ()
+    {
+        float base = 2; //Pitch usually follows a logarithm of base 2 (an octave higher is *2 lower is 1/2)
+
+        int index_tracker = 0;
+
+        for (int i = 0; i < num_bands; i++)
+        {
+            int width = (int) pow(base, i); // approximate the amount of bins should go into bands on a logarithmic scale
+            
+            int start = index_tracker;  //the start of the bin range to avg
+            int end = min(index_tracker + width, num_freq - 1);  //the end of the bin range to avg. Protection from running past bins array
+
+            float total = 0;    //traditional stuff for avg
+            float amount = 0;   // *
+
+            for(int j = start; j < end; j++) //avg bin values to plug into band
+            {
+                total += smooth[j];
+                amount += 1;
+            }
+
+            bands[i] = total/amount;
+
+            index_tracker = end; //update our tracker so we start at the right position in the next loop
+
+            if (index_tracker  == num_freq - 1) break;
+        }
     }
     
     void start()

@@ -3,7 +3,7 @@ String[] fname = {"Still Feel - Half Alive.mp3", "High Hopes - Panic! at the dis
 
 AudioController ac;
 
-int num_freq;
+int num_bands;
 int bar_w; 
 
 
@@ -14,9 +14,9 @@ void setup()
     
 
 
-    ac  = new AudioController(this,fname[0]);
-    num_freq = ac.num_freq;
-    bar_w = width/num_freq;
+    ac  = new AudioController(this,fname[1]);
+    num_bands = ac.num_bands;
+    bar_w = width/num_bands;
     ac.start();
 
     
@@ -29,11 +29,12 @@ void draw()
     fill(255, 0, 0);
     
     ac.update();
-    for(int i = 0; i < num_freq; i++)
+    for(int i = 0; i < num_bands; i++)
     {   
         
-        float bar_h = (ac.smooth[i] * (height * .5));
+        float bar_h = (ac.bands[i] * (height * .5));
         rect(bar_w * i, height, bar_w, (int)-bar_h);
+        //println(i, ac.bands[i]);
     }
-    //println(ac.frequencies[0]);
+    
 }
