@@ -37,8 +37,8 @@ class AudioController
     private float [] frequencies = new float[num_freq]; // Stores frequency  amplitudes from the FFT
     private float [] smooth = new float[num_freq]; //stores smoothed out FFT values
 
-    int num_bands = 12;
-    float [] bands = new float[num_bands]; //containts finally logarithmically adjusted frequencies bands
+    private int num_bands = 12;
+    private float [] bands = new float[num_bands]; //containts finally logarithmically adjusted frequencies bands
 
 
     private float [] freq_volume = new float [num_freq]; //volumes for each frequency band
@@ -166,6 +166,11 @@ class AudioController
 
             if (index_tracker  == num_freq - 1) break;
         }
+    }
+
+    float[] bands()
+    {
+        return bands;
     }
     
     void start()
