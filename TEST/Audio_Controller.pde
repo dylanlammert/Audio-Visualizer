@@ -230,26 +230,7 @@ class AudioController
     //-------------------------------------------------------------------------------
     // Change Effects----------------------------------------------------------------
     //-------------------------------------------------------------------------------
-
-    void pause() // toggle pause
-    {
-        if (paused) audio.play();
-        else audio.pause();
-    }
-
-    void jump (int time) // time in seconds
-    {
-        audio.jump(time);
-    }
-
-    void set_speed (float sp) //updates speed. Currently will distort pitch. 
-    {
-        audio.rate(sp);
-    }
-
     
-
-
     /*
     Takes in a single float 0-1 
 
@@ -278,6 +259,21 @@ class AudioController
     //flow control-------------------------------------------------------------------
     //-------------------------------------------------------------------------------
 
+    void pause() // toggle pause
+    {
+        if (paused) audio.play();
+        else audio.pause();
+    }
+
+    void jump (int time) // time in seconds
+    {
+        audio.jump(time);
+    }
+
+    void set_speed (float sp) //updates speed. Currently will distort pitch.
+    {
+        audio.rate(sp);
+    }
 
 
     //-----------------------------------------------------------------------------
