@@ -49,6 +49,7 @@ class AudioController
     private int num_freq = 8192;                        //required to be a power of 2 for the FFT to work
     private float [] frequencies = new float[num_freq]; // Stores frequency  amplitudes from the FFT
     private float [] smooth = new float[num_freq];      //stores smoothed out FFT values scaled to a history adjusted amplitude peak
+    float[] peak = new float[num_freq]; // used to compare recent audio intensity levels for scaling to the the standard range
 
     private int num_bands = 12;
     private float [] bands = new float[num_bands]; //contains final logarithmically adjusted frequencies bands
@@ -83,8 +84,10 @@ class AudioController
 
     private float reverb_strength = 0; //not necessary unless we need to pull the active reverb for whatever reason
     private Reverb rvb;
+
+    private boolean paused; 
     
-    float[] peak = new float[num_freq]; // used to compare recent audio intensity levels for scaling to the the standard range
+    
 
     //call for clean memory deallocation of currently active file
     void dispose()
@@ -228,6 +231,25 @@ class AudioController
     // Change Effects----------------------------------------------------------------
     //-------------------------------------------------------------------------------
 
+    void pause() // toggle pause
+    {
+        if (paused) audio.play();
+        else audio.pause();
+    }
+
+    void jump (int time) // time in seconds
+    {
+        audio.jump(time);
+    }
+
+    void set_speed (float sp) //updates speed. Currently will distort pitch. 
+    {
+        audio.rate(sp);
+    }
+
+    
+
+
     /*
     Takes in a single float 0-1 
 
@@ -250,6 +272,12 @@ class AudioController
         } else rvb.stop();
         
     }
+
+
+    //-------------------------------------------------------------------------------
+    //flow control-------------------------------------------------------------------
+    //-------------------------------------------------------------------------------
+
 
 
     //-----------------------------------------------------------------------------
