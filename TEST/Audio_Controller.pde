@@ -25,12 +25,11 @@ class AudioController
     
     /*
     Audio source management
-    This seems to be a minim based approoach sound library will require a different approach
     */ 
     String song_name; //Eventually an argument right now test audio
     SoundFile audio; 
 
-    int num_freq = 4096; //required to be a power of 2 for the FFT to work
+    int num_freq = 8192; //required to be a power of 2 for the FFT to work
     FFT fft; //fourier transform object
     
 
@@ -38,7 +37,7 @@ class AudioController
     private float [] smooth = new float[num_freq]; //stores smoothed out FFT values
 
     private int num_bands = 12;
-    private float [] bands = new float[num_bands]; //containts finally logarithmically adjusted frequencies bands
+    private float [] bands = new float[num_bands]; //contains final logarithmically adjusted frequencies bands
 
 
     private float [] freq_volume = new float [num_freq]; //volumes for each frequency band
@@ -91,20 +90,29 @@ class AudioController
 
     */
 
+    //call for clean memory deallocation of currently active file
+    void dispose()
+    {
+        if (audio != null)
+        {
+            audio.stop();
+            audio = null;
+        }
+    }
+
     //Loads song file into the Controller
     void loadSong (PApplet app, String fname) // For the applet just type 'this' to get a reference to the running process
     {
+        dispose();
         audio = new SoundFile(app, fname);
         fft.input(audio);
     }
 
+    
     //Constructor for the Controller
-    AudioController(PApplet app, String fname) // For the applet just type 'this' to get a reference to the running process
+    AudioController(PApplet app) // For the applet just type 'this' to get a reference to the running process
     {
         fft = new FFT(app, num_freq);
-        
-        song_name = fname;
-        loadSong(app, song_name);
 
         for (int i = 0; i < freq_volume.length; i++) freq_volume[i] = 1; //initizlize frequency band volume
         for (int i = 0; i < smooth.length; i++) smooth[i] = 0;
@@ -113,7 +121,8 @@ class AudioController
 
     void update()
     {
-        frequencies = fft.analyze(frequencies);//stores the frequency bands. Needs rescaled values will be ~ .05
+        if(!audio.isPlaying()) audio.play();
+        fft.analyze(frequencies);//stores the frequency bands. Needs rescaled values will be ~ .05
         float[] normalized = new float[num_freq];
 
         for (int i = 0; i < num_freq; i++) //normalize each frequency band in a range of 0-1
@@ -126,13 +135,19 @@ class AudioController
 
 
             normalized[i] =  frequencies[i]/peak[i]; //rescales to a range 0 - 1 based on relative loudness to recent samples
-            constrain(normalized[i], 0, 1);  //just in case I'm not seeing something
+            normalized [i] = constrain(normalized[i], 0, 1);  //just in case I'm not seeing something
 
             smooth[i] = lerp(smooth[i], normalized[i], .05);
-            map_bands();
+            
         }
         
-
+        map_bands();// readjusts to a logarithmic scale
+        
+        
+        
+        //println(frequencies[1], frequencies[100]);
+        //println("playing:", ac.audio.isPlaying(), frequencies[10]);
+        
     }
 
     /* 
@@ -149,7 +164,7 @@ class AudioController
             int width = (int) pow(base, i); // approximate the amount of bins should go into bands on a logarithmic scale
             
             int start = index_tracker;  //the start of the bin range to avg
-            int end = min(index_tracker + width, num_freq - 1);  //the end of the bin range to avg. Protection from running past bins array
+            int end = min(index_tracker + width, num_freq);  //the end of the bin range to avg. Protection from running past bins array
 
             float total = 0;    //traditional stuff for avg
             float amount = 0;   // *
@@ -160,7 +175,7 @@ class AudioController
                 amount += 1;
             }
 
-            bands[i] = total/amount;
+            bands[i] = (amount > 0) ? total/amount : 0;
 
             index_tracker = end; //update our tracker so we start at the right position in the next loop
 
@@ -172,9 +187,17 @@ class AudioController
     {
         return bands;
     }
+
+    int get_num_bands()
+    {
+        return num_bands;
+    }
     
     void start()
     {
         audio.play();
+        println("Audio frames:", audio.frames());
+        println(audio.duration());
+        audio.amp(1);
     }
 }

@@ -1,5 +1,5 @@
 
-String[] fname = {"Still Feel - Half Alive.mp3", "High Hopes - Panic! at the disco.mp3"} ;
+String[] fname = {"Still Feel - Half Alive.wav", "High Hopes - Panic! at the disco.wav", "Still Feel - Half Alive.mp3", "High Hopes - Panic! at the disco.mp3"} ;
 
 AudioController ac;
 
@@ -14,7 +14,9 @@ void setup()
     
 
 
-    ac  = new AudioController(this,fname[1]);
+    ac  = new AudioController(this);
+    ac.loadSong(this,fname[0]);
+
     num_bands = ac.num_bands;
     bar_w = width/num_bands;
     ac.start();
@@ -28,13 +30,25 @@ void draw()
     
     fill(255, 0, 0);
     
+
+    
+
     ac.update();
-    for(int i = 0; i < num_bands; i++)
+    float [] b = ac.bands();
+    for(int i = 0; i < ac.get_num_bands(); i++)
     {   
         
-        float bar_h = (ac.bands[i] * (height * .5));
+        float bar_h = (b[i] * (height * .5));
         rect(bar_w * i, height, bar_w, (int)-bar_h);
         //println(i, ac.bands[i]);
     }
     
+}
+
+
+//called on process close. Ensures clean memory deallocation. 
+void stop()
+{
+    ac.dispose();
+    super.stop();
 }
