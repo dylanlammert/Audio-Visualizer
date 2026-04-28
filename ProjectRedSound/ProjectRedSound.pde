@@ -1,17 +1,6 @@
-/**
- * Processing Sound Library, Example 5
- *
- * This sketch shows how to use the FFT class to analyze a stream
- * of sound. Change the number of bands to get more spectral bands
- * (at the expense of more coarse-grained time resolution of the spectrum).
- *
- * Load this example with included sound files from the Processing Editor:
- * Examples > Libraries > Sound > Analysis > FFTSpectrum
- */
 
 import processing.sound.*;
 
-// Declare the sound source and FFT analyzer variables
 String fname = "18 - P.T. Adamczyk - Never Fade Away (SAMURAI Cover) - feat. Olga Jankowska.mp3";
 boolean paused = false;
 boolean play = false;
@@ -22,6 +11,7 @@ Waveform waveform;
 int samples = 100;
 float[] save;
 float[][] allsave;
+int totalamount = 0;
 public void setup()
 {
   size(640, 360);
@@ -33,26 +23,24 @@ public void setup()
 
   waveform = new Waveform(this, samples);
   waveform.input(sample);
-
-  allsave = new float[60 * int(ceil(sample.duration()))][(samples)];
+  totalamount = 60 * int(ceil(sample.duration()));
+  allsave = new float[int(totalamount)][(samples)];
   println((samples * 60) * int(ceil(sample.duration())));
 }
 
 public void draw()
 {
-  if(paused){
-    vertexdisplay();
-  }
-  else if(play){
+  if (paused) {
+    vertexpuase();
+  } else if (play) {
     vertexSave();
-  }
-  else{
+  } else {
     vertexload();
     moveVideo();
   }
 }
 
-void vertexSave(){
+void vertexSave() {
   background(0);
   stroke(255);
   strokeWeight(2);
@@ -61,90 +49,85 @@ void vertexSave(){
   sample.play();
   sample.rate(1);
   sample.amp(1.0);
-  for(int x = 0; x < 60 * int(ceil(sample.duration()));x++)
+
+  for (int y = 0; y < totalamount; y++)
   {
-  for(int i = 0; i < samples; i++)
-  {
-       print(allsave[x][i]);
-  }
-  println("");
-  }   
-  for(int y = 0; x < 60 * int(ceil(sample.duration()));y++)
-  {
-  beginShape();
-  for(int i = 0; i < samples; i++)
-  {
-    vertex(
-      map(i, 0, samples, 0, width),
-      map(allsave[y][i], -1, 1, 0, height)
-    );
-  }
-  endShape();
+    beginShape();
+    for (int i = 0; i < samples; i++)
+    {
+      vertex(
+        map(i, 0, samples, 0, width),
+        map(allsave[y][i], -1, 1, 0, height)
+        );
+    }
+    endShape();
   }
 }
-void vertexdisplay(){
+void vertexpuase() {
   background(0);
   stroke(255);
   strokeWeight(2);
   noFill();
-  
+
   beginShape();
-  for(int i = 0; i < samples; i++)
+  for (int i = 0; i < samples; i++)
   {
     vertex(
       map(i, 0, samples, 0, width),
       map(save[i], -1, 1, 0, height)
-    );
+      );
   }
   endShape();
 }
-void vertexload(){
+void vertexload() {
   background(0);
   stroke(255);
   strokeWeight(2);
   noFill();
   sample.rate(1);
   sample.amp(1.0);
-  
+
   waveform.analyze();
   float t = sample.position();
-  if(t == sample.duration())
+  if (t != 0)
   {
-    x=0;
-    sample.stop();
-  }
-   beginShape();
-    for(int i = 0; i < samples; i++)
-  {
-    vertex(
-      map(i, 0, samples, 0, width),
-      map(waveform.data[i], -1, 1, 0, height)
-    );
-    allsave[x][i] = waveform.data[i];
-  }
-  x++;
-  println(x);
+    beginShape();
+    for (int i = 0; i < samples; i++)
+    {
+      vertex(
+        map(i, 0, samples, 0, width),
+        map(waveform.data[i], -1, 1, 0, height)
+        );
+      allsave[x][i] = waveform.data[i];
+      save[i] = waveform.data[i];
+    }
+    x++;
+    println(x);
     endShape();
+    println(t);
+  } else
+  {
+  }
 }
 void moveVideo()
 {
   fill(color(0));
   rect(0, height-15, width, width);
-  fill(color(255,0,0));
+  fill(color(255, 0, 0));
   float t = sample.position();
   float calcuation = (width / sample.duration())*t;
   rect(0, height-15, calcuation, width);
-  if(mousePressed)
-    if(mouseY >= height-15)
+  if (mousePressed)
+  if (mouseY >= height-15)
   {
-      float timejump = (sample.duration()/width)*mouseX;
-      sample.jump(timejump);
-      sample.play();
+    float timejump = floor((sample.duration()/width)*mouseX);
+    x = floor((totalamount/width)*mouseX);
+    sample.jump(timejump);
   }
 }
-void keyReleased(){
+void keyReleased() {
   if (key == 'p') {
-    if(paused) {
+    if (paused) {
       paused = false;
       sample.play();
     } else {
@@ -153,7 +136,7 @@ void keyReleased(){
     }
   }
   if (key == 'v') {
-    if(paused) {
+    if (paused) {
       play = false;
       x=0;
     } else {
