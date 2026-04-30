@@ -28,7 +28,7 @@ class AudioController
     */ 
     String song_name; //Eventually an argument right now test audio
     SoundFile audio; 
-
+    PApplet application;
     
     FFT fft; //fourier transform object
     
@@ -87,7 +87,9 @@ class AudioController
 
     private boolean paused; 
     
-    
+    //-------------------------------------------------------------------------------
+    // Memory management----------------------------------------------------------------
+    //-------------------------------------------------------------------------------
 
     //call for clean memory deallocation of currently active file
     void dispose()
@@ -99,12 +101,19 @@ class AudioController
         }
     }
 
-    //Loads song file into the Controller
-    void loadSong (PApplet app, String fname) // For the applet just type 'this' to get a reference to the running process
+
+    //Loads song file into the Controller returns boolean based on if a file was selected.
+    public void loadSong (String filePath) // For the applet just type 'this' to get a reference to the running process
     {
+        
         dispose();
-        audio = new SoundFile(app, fname);
+        audio = new SoundFile(application, filePath);
         fft.input(audio);
+        audio.play();
+        println("song chosen ", filePath);
+           
+        
+        
         
     }
 
@@ -112,6 +121,7 @@ class AudioController
     //Constructor for the Controller
     AudioController(PApplet app) // For the applet just type 'this' to get a reference to the running process
     {
+        application = app;
         fft = new FFT(app, num_freq);
         rvb = new Reverb(app);
 
@@ -261,8 +271,16 @@ class AudioController
 
     void pause() // toggle pause
     {
-        if (paused) audio.play();
-        else audio.pause();
+        if (paused)
+        { 
+            audio.play();
+            paused = false;
+        }
+        else 
+        {
+            audio.pause();
+            paused = true;
+        }
     }
 
     void jump (int time) // time in seconds
