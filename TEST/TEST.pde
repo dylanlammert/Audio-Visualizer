@@ -29,7 +29,7 @@ void draw()
     fill(255, 0, 0);
     if ((file_is_selected))
     {
-        if(ac.isPlay())
+        if(ac.is_play())
         {
             ac.update();
             float [] b = ac.bands();
@@ -64,7 +64,7 @@ void keyReleased()
 
     if (key == 'p')
     {
-        if (!ac.isPlay())
+        if (!ac.is_play())
         {
             ac.pause();
         } else 
@@ -83,14 +83,14 @@ void keyReleased()
         if (keyCode == UP)
         {
             reverb_strength += .1;
-            ac.set_reverb(reverb_strength);
+            ac.set_speed(reverb_strength);
             println(reverb_strength);
         }
 
         if (keyCode == DOWN)
         {
             reverb_strength -= .1;
-            ac.set_reverb(reverb_strength);
+            ac.set_speed(reverb_strength);
             println(reverb_strength);
         }
     }

@@ -82,7 +82,7 @@ class AudioController
     
     private float master_volume = 1;
 
-    private float reverb_strength = 0; //not necessary unless we need to pull the active reverb for whatever reason
+    private float reverb_strength = 1; //not necessary unless we need to pull the active reverb for whatever reason
     private Reverb rvb;
 
     
@@ -260,43 +260,62 @@ class AudioController
         
     }
 
+    void set_volume(float strength)
+    {
+        strength = constrain(strength,0,1);
+        master_volume = (strength);
+        audio.amp(strength);
+    }
 
     //-------------------------------------------------------------------------------
     //flow control-------------------------------------------------------------------
     //-------------------------------------------------------------------------------
 
-    void pause() // toggle pause
+    void pause()                // toggle pause
     {
         if (!audio.isPlaying())audio.play();
         else audio.pause();
     }
 
-    void jump (int time) // time in seconds
+    void offset_time (int time) //time in seconds can be negative
     {
-        audio.jump(time);
+        audio.jump(audio.position() + time);
     }
 
-    void set_speed (float sp) //updates speed. Currently will distort pitch.
+    void set_speed (float sp)   //updates speed. Currently will distort pitch.
     {
         audio.rate(sp);
     }
 
+    void jump(float percent)    // for progress bar jumps expects 0-1
+    {
+        percent = constrain(percent, 0.0, 1.0);
+        audio.jump(percent * (audio.position()/audio.duration())); // automatically rescales. 
+    }
+
+    void change_rate(float speed) //shifts pitch as a side effect.
+    {
+        audio.rate(speed);
+    }
+    
 
     //-----------------------------------------------------------------------------
     //Getters ---------------------------------------------------------------------
     //-----------------------------------------------------------------------------
-    float[] bands() {return bands;}
+    float[] bands()             {return bands;}
     
 
-    int get_num_bands(){ return num_bands;}
+    int get_num_bands()        { return num_bands;}
    
 
-    int get_num_freq() {return num_freq;}
+    int get_num_freq()         {return num_freq;}
 
-    boolean get_is_beat() {return is_beat;}
+    boolean get_is_beat()      {return is_beat;}
     float get_beat_amplitude() {return beat_amplitude;}
 
-    boolean isPlay() {return audio.isPlaying();}
+    boolean is_play()          {return audio.isPlaying();}
+    float get_time()           {return audio.position();}
+    float get_duration()       {return audio.duration();}
     
     void start()
     {
