@@ -79,13 +79,13 @@ class AudioController
         *Paused bools
     */
     
-    private float [] freq_volume = new float [num_freq]; //volumes for each frequency band
+    
     private float master_volume = 1;
 
     private float reverb_strength = 0; //not necessary unless we need to pull the active reverb for whatever reason
     private Reverb rvb;
 
-    private boolean paused; 
+    
     
     //-------------------------------------------------------------------------------
     // Memory management----------------------------------------------------------------
@@ -97,7 +97,7 @@ class AudioController
         if (audio != null)
         {
             audio.stop();
-            audio = null;
+            audio.removeFromCache();
         }
     }
 
@@ -109,12 +109,8 @@ class AudioController
         dispose();
         audio = new SoundFile(application, filePath);
         fft.input(audio);
-        audio.play();
         println("song chosen ", filePath);
-           
-        
-        
-        
+        audio.play();
     }
 
     
@@ -125,7 +121,7 @@ class AudioController
         fft = new FFT(app, num_freq);
         rvb = new Reverb(app);
 
-        for (int i = 0; i < freq_volume.length; i++) freq_volume[i] = 1; //initizlize frequency band volume
+       
         for (int i = 0; i < smooth.length; i++) smooth[i] = 0;
         for (int i = 0; i < peak.length; i++) peak[i] = .5;
 
@@ -271,16 +267,8 @@ class AudioController
 
     void pause() // toggle pause
     {
-        if (paused)
-        { 
-            audio.play();
-            paused = false;
-        }
-        else 
-        {
-            audio.pause();
-            paused = true;
-        }
+        if (!audio.isPlaying())audio.play();
+        else audio.pause();
     }
 
     void jump (int time) // time in seconds
@@ -307,6 +295,8 @@ class AudioController
 
     boolean get_is_beat() {return is_beat;}
     float get_beat_amplitude() {return beat_amplitude;}
+
+    boolean isPlay() {return audio.isPlaying();}
     
     void start()
     {
