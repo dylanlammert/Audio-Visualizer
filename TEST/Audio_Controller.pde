@@ -1,6 +1,9 @@
-import processing.sound.*;
-/* 
+import ddf.minim.*;
+import ddf.minim.analysis.*;
+import ddf.minim.ugens.*;
 
+
+/*
 This class reads the input audio file and updates Data fields per frame
 Has functions that will apply modifications to the audio determined by arguments sent by UI
 
@@ -12,10 +15,6 @@ Available effect features
     *  Wholistic and frequency based Volume control
     *  Reverb filter
     *  ...
-
-
-
-
 Dependent on Minim library
 */
 class AudioController
@@ -25,34 +24,22 @@ class AudioController
     
     /*
     Audio source management
-    */ 
-    String song_name; //Eventually an argument right now test audio
-    SoundFile audio; 
-    PApplet application;
-    
-    FFT fft; //fourier transform object
-    
-    
-     /*
-    Outgoing Audio data
-
-    * bool is_beat, int beat_amplitude for GUI
-    * a copy of the fourier transform frequency bands. for GUI
-        * FFT data will be a float array scaled 0 - 1.0 indicating amplitude for frequencies in range
-          like a histogram would. Entirely private for internal processing only
-        * HAS to be used on Raw audio data not filtered many internal functions and effects will be dependent on this
-    *Bands is the final analyzed frequency ranges to be returned to the main program
-        *Logarithmically adjusted to better reflect human audio perception.
-    
     */
+    PApplet application; 
+    Minim minim; 
+    String song_name; //Eventually an argument right now test audio
+    FilePlayer audio; //original audio source
+    AudioOutput out; //merge of filter and effects.
     
-    private int num_freq = 8192;                        //required to be a power of 2 for the FFT to work
-    private float [] frequencies = new float[num_freq]; // Stores frequency  amplitudes from the FFT
-    private float [] smooth = new float[num_freq];      //stores smoothed out FFT values scaled to a history adjusted amplitude peak
-    float[] peak = new float[num_freq]; // used to compare recent audio intensity levels for scaling to the the standard range
+    
+    /*
+     analysis variables and objects
+    */
+    FFT fft; //fourier transform object
 
-    private int num_bands = 12;
-    private float [] bands = new float[num_bands]; //contains final logarithmically adjusted frequencies bands
+    private float[] smooth;       //stores smoothed out FFT values scaled to a history adjusted amplitude peak
+    private float[] peak;         //used to compare recent audio intensity levels for scaling to the the standard range
+
 
     private boolean is_beat = false;            //for GUI to determine if a beat action is needed
     private float beat_amplitude;               //intensity of the beat action
@@ -62,28 +49,22 @@ class AudioController
     private float beat_duration_decay = 0.87;   //How fast it fades
 
 
-    /*
-    Data inputs
-    
-    Almost all data inputs will be in the form of a float scaled 0.0-1.0
-    This will allow the UI sliders to send an easy to manage signal and the audio controller will scale
-    the number and apply affects accordingly:
-        * All volume sliders
-        * Reverb: 0 none 1 max (whatever is the limit for what sounds ok)
-        * Pitch shift: centered on .5  
-            * < .5 shifts down
-            * > .5 shifts up probably 
-            * audio is nonlinear so this may be a bit complex
-        * Playback speed (this one can scale to 2.0 maybe)
-            
-        *Paused bools
+    /* 
+    effect data
     */
-    
+   MoogFilter low;
+   MoogFilter mid;
+   MoogFilter high;
+
+
+    /*
+    input data
+    */
     
     private float master_volume = 1;
 
     private float reverb_strength = 1; //not necessary unless we need to pull the active reverb for whatever reason
-    private Reverb rvb;
+   
 
     
     
@@ -91,24 +72,36 @@ class AudioController
     // Memory management----------------------------------------------------------------
     //-------------------------------------------------------------------------------
 
-    //call for clean memory deallocation of currently active file
-    void dispose()
-    {
-        if (audio != null)
-        {
-            audio.stop();
-            audio.removeFromCache();
-        }
-    }
+    // //call for clean memory deallocation of currently active file
+    // void dispose()
+    // {
+    //     if (audio != null)
+    //     {
+    //         audio.paus();
+    //         audio.removeFromCache();
+    //     }
+    // }
 
 
-    //Loads song file into the Controller returns boolean based on if a file was selected.
+    //Loads song file into the Controller
     public void loadSong (String filePath) // For the applet just type 'this' to get a reference to the running process
     {
-        
-        dispose();
-        audio = new SoundFile(application, filePath);
-        fft.input(audio);
+        audio = new FilePlayer(minim.loadFileStream(filePath));
+        audio.loop();
+        audio.setSampleRate(2058);
+
+        out = minim.getLineOut();   //create the audio output object
+    
+        fft = new FFT(2048, 44100);
+        fft.logAverages(11, 1); //this automatically fixes the log issue and will give us 12 frequncy bands that are nice visually
+        fft.window((FFT.HAMMING)); //windowing functin that cleans up the sound wave going into FFT
+       
+
+        smooth = new float[fft.avgSize()];
+        peak = new float[fft.avgSize()];
+        for (int i = 0; i < smooth.length; i++) smooth[i] = 0;
+        for (int i = 0; i < peak.length; i++) peak[i] = .5;
+         
         println("song chosen ", filePath);
         audio.play();
     }
@@ -118,13 +111,11 @@ class AudioController
     AudioController(PApplet app) // For the applet just type 'this' to get a reference to the running process
     {
         application = app;
-        fft = new FFT(app, num_freq);
-        rvb = new Reverb(app);
-
-       
-        for (int i = 0; i < smooth.length; i++) smooth[i] = 0;
-        for (int i = 0; i < peak.length; i++) peak[i] = .5;
-
+        minim = new Minim(app);
+        
+        low  = new MoogFilter(200, .7, MoogFilter.Type.LP);
+        mid  = new MoogFilter(1000, .8, MoogFilter.Type.BP);
+        high = new MoogFilter(5000, .5, MoogFilter.Type.HP);
     }
 
     // -------------------------------------------------------------------------------
@@ -138,29 +129,29 @@ class AudioController
     */
     void update()
     {
+        audio.patch(low).patch(mid).patch(high);
+        fft.input(out);//stores the frequency bands. Needs rescaled values will be ~ .05
         
-        if(!audio.isPlaying()) audio.play();
-        fft.analyze(frequencies);//stores the frequency bands. Needs rescaled values will be ~ .05
-        float[] normalized = new float[num_freq];
+        float[] normalized = new float[fft.avgSize()];
 
-        for (int i = 0; i < num_freq; i++) //normalize each frequency band in a range of 0-1
+        for (int i = 0; i < fft.avgSize(); i++) //normalize each frequency band in a range of 0-1
         {
             //adaptively chooses a highest volume.
             //If old peak is chosen it will slowly decay 
             //to react to volume shifts in the music
-            peak[i] = max((peak[i] * .99), frequencies[i]); 
+            peak[i] = max((peak[i] * .99), fft.getAvg(i)); 
             peak[i] = max(peak[i], .001);  //protects div by zero
 
 
-            normalized[i] =  frequencies[i]/peak[i];          //rescales to a range 0 - 1 based on relative loudness to recent samples
+            normalized[i] =  fft.getAvg(i)/peak[i];          //rescales to a range 0 - 1 based on relative loudness to recent samples
             normalized [i] = constrain(normalized[i], 0, 1);  //just in case I'm not seeing something
 
-            smooth[i] = lerp(smooth[i], normalized[i], .02);
+            smooth[i] = lerp(smooth[i], normalized[i], .01);
             
         }
         
         
-        map_bands();// readjusts to a logarithmic scale
+        
         detectBeat();
     }
 
@@ -177,7 +168,7 @@ class AudioController
     */
     void detectBeat()
     {
-    float bass_amp = (bands[1] + bands[2] + bands[3] + bands[3]) / 4;
+    float bass_amp = (smooth[1] + smooth[2] + smooth[3] + smooth[3]) / 4;
 
     // Decay the recent peak between beats
     beat_peak = beat_peak * beat_decay;
@@ -196,41 +187,7 @@ class AudioController
     beat_amplitude = beat_duration;    // Use duration for amplitude instead
     }
 
-    /* 
-    Adjusts the FFT bins linear scale and plugs it into Bands that more closely resemble our perception
-    */ 
-    void map_bands ()
-    {
-        float base = 2; //Pitch usually follows a logarithm based on 2
-        int index_tracker = 0;
-
-        for (int i = 0; i < num_bands; i++)
-        {
-            int width = (int) pow(base, i); // approximate the amount of bins should go into bands on a logarithmic scale
-            
-            int start = index_tracker;  //the start of the bin range to avg
-            int end = min(index_tracker + width, num_freq);  //the end of the bin range to avg. Protection from running past bins array
-
-            float total = 0;    //traditional stuff for avg
-            float amount = 0;   // *
-
-            for(int j = start; j < end; j++) //avg bin values to plug into band
-            {
-                total += smooth[j];
-                amount += 1;
-            }
-
-            bands[i] = (amount > 0) ? total/amount : 0;
-
-            index_tracker = end; //update our tracker so we start at the right position in the next loop
-
-            
-            
-
-            if (index_tracker  == num_freq - 1) break;
-        }
-    }
-
+   
 
     
     //-------------------------------------------------------------------------------
@@ -243,85 +200,81 @@ class AudioController
     uses that number to scale the various arguments for reverb effects
     sets them and activates the reverb
     */
-    void set_reverb(float strength)
-    {
-        strength = constrain(strength,0,1);
-        reverb_strength = strength;
+    // void set_reverb(float strength)
+    // {
+    //     strength = constrain(strength,0,1);
+    //     reverb_strength = strength;
 
-        if (strength > 0)
-        {
-            rvb.damp(strength * .5);                //Limits high notes
-            rvb.room(map(strength, 0, 1, .2, .8));  //simulates room size of the echo effect
-            rvb.wet(map(strength, 0, 1, 0, .6));    //general strength of the reverb
+    //     if (strength > 0)
+    //     {
+    //         rvb.damp(strength * .5);                //Limits high notes
+    //         rvb.room(map(strength, 0, 1, .2, .8));  //simulates room size of the echo effect
+    //         rvb.wet(map(strength, 0, 1, 0, .6));    //general strength of the reverb
 
 
-            rvb.process(audio);
-        } else rvb.stop();
+    //         rvb.process(audio);
+    //     } else rvb.stop();
         
-    }
+    // }
 
-    void set_volume(float strength)
-    {
-        strength = constrain(strength,0,1);
-        master_volume = (strength);
-        audio.amp(strength);
-    }
+    // void set_volume(float strength)
+    // {
+    //     strength = constrain(strength,0,1);
+    //     master_volume = (strength);
+    //     //audio.amp(strength);
+    // }
 
     //-------------------------------------------------------------------------------
     //flow control-------------------------------------------------------------------
     //-------------------------------------------------------------------------------
 
-    void pause()                // toggle pause
-    {
-        if (!audio.isPlaying())audio.play();
-        else audio.pause();
-    }
+    // void pause()                // toggle pause
+    // {
+    //     if (!audio.isPlaying())audio.play();
+    //     else audio.pause();
+    // }
 
-    void offset_time (int time) //time in seconds can be negative
-    {
-        audio.jump(audio.position() + time);
-    }
+    // void offset_time (int time) //time in seconds can be negative
+    // {
+    //     audio.jump(audio.position() + time);
+    // }
 
-    void set_speed (float sp)   //updates speed. Currently will distort pitch.
-    {
-        audio.rate(sp);
-    }
+    // void set_speed (float sp)   //updates speed. Currently will distort pitch.
+    // {
+    //     audio.rate(sp);
+    // }
 
-    void jump(float percent)    // for progress bar jumps expects 0-1
-    {
-        percent = constrain(percent, 0.0, 1.0);
-        audio.jump(percent * (audio.position()/audio.duration())); // automatically rescales. 
-    }
+    // void jump(float percent)    // for progress bar jumps expects 0-1
+    // {
+    //     percent = constrain(percent, 0.0, 1.0);
+    //     audio.jump(percent * (audio.position()/audio.duration())); // automatically rescales. 
+    // }
 
-    void change_rate(float speed) //shifts pitch as a side effect.
-    {
-        audio.rate(speed);
-    }
+    // void change_rate(float speed) //shifts pitch as a side effect.
+    // {
+    //     audio.rate(speed);
+    // }
     
 
     //-----------------------------------------------------------------------------
     //Getters ---------------------------------------------------------------------
     //-----------------------------------------------------------------------------
-    float[] bands()             {return bands;}
-    
-
-    int get_num_bands()        { return num_bands;}
-   
-
-    int get_num_freq()         {return num_freq;}
+    float[] bands()             {return smooth;}
+    int get_num_bands()        {return fft.avgSize();}
 
     boolean get_is_beat()      {return is_beat;}
     float get_beat_amplitude() {return beat_amplitude;}
 
     boolean is_play()          {return audio.isPlaying();}
     float get_time()           {return audio.position();}
-    float get_duration()       {return audio.duration();}
+    //float get_duration()     {return audio.duration();}
     
-    void start()
-    {
-        audio.play();
-        println("Audio frames:", audio.frames());
-        println(audio.duration());
-        audio.amp(1);
-    }
+    // void start()
+    // {
+    //     audio.play();
+    //     println("Audio frames:", audio.frames());
+    //     println(audio.duration());
+    //     audio.amp(1);
+    // }
 }
+

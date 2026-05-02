@@ -15,8 +15,7 @@ void setup()
 
     ac  = new AudioController(this);
 
-    num_bands = ac.num_bands;
-    bar_w = width/num_bands;
+    
     file_is_selected = false;
     
     
@@ -29,6 +28,8 @@ void draw()
     fill(255, 0, 0);
     if ((file_is_selected))
     {
+        num_bands = ac.get_num_bands();
+        bar_w = width/num_bands;
         if(ac.is_play())
         {
             ac.update();
@@ -51,49 +52,44 @@ void draw()
         
             circle(100, 100, radius);
         }
-    }
-    
-
-    
-    
-    
+    } 
 }
 
 void keyReleased()
 {
 
-    if (key == 'p')
-    {
-        if (!ac.is_play())
-        {
-            ac.pause();
-        } else 
-        {
-            ac.pause();
-        }
-    }
+    // if (key == 'p')
+    // {
+    //     if (!ac.is_play())
+    //     {
+    //         ac.pause();
+    //     } else 
+    //     {
+    //         ac.pause();
+    //     }
+    // }
 
     if (key == 'f')
     {
         selectInput("Choose a file:", "fileSelected");
     }
     
-    if (key == CODED)
-    {
-        if (keyCode == UP)
-        {
-            reverb_strength += .1;
-            ac.set_speed(reverb_strength);
-            println(reverb_strength);
-        }
+    // if (key == CODED)
+    // {
+    //     if (keyCode == UP)
+    //     {
+    //         reverb_strength += .1;
+    //         ac.set_speed(reverb_strength);
+    //         println(reverb_strength);
+    //     }
 
-        if (keyCode == DOWN)
-        {
-            reverb_strength -= .1;
-            ac.set_speed(reverb_strength);
-            println(reverb_strength);
-        }
-    }
+    //     if (keyCode == DOWN)
+    //     {
+    //         reverb_strength -= .1;
+    //         ac.set_speed(reverb_strength);
+    //         println(reverb_strength);
+    //     }
+    // }
 }
 
 void fileSelected(File selection)
@@ -111,8 +107,7 @@ void fileSelected(File selection)
 }
 
 //called on process close. Ensures clean memory deallocation. 
-void stop()
-{
-    ac.dispose();
-    super.stop();
-}
+// void stop()
+// {
+//     super.stop();
+// }
