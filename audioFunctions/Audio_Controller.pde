@@ -28,7 +28,7 @@ class AudioController
     */ 
     String song_name; //Eventually an argument right now test audio
     SoundFile audio; 
-
+    PApplet application;
     
     FFT fft; //fourier transform object
     
@@ -49,6 +49,7 @@ class AudioController
     private int num_freq = 8192;                        //required to be a power of 2 for the FFT to work
     private float [] frequencies = new float[num_freq]; // Stores frequency  amplitudes from the FFT
     private float [] smooth = new float[num_freq];      //stores smoothed out FFT values scaled to a history adjusted amplitude peak
+    float[] peak = new float[num_freq]; // used to compare recent audio intensity levels for scaling to the the standard range
 
     private int num_bands = 12;
     private float [] bands = new float[num_bands]; //contains final logarithmically adjusted frequencies bands
@@ -78,13 +79,17 @@ class AudioController
         *Paused bools
     */
     
-    private float [] freq_volume = new float [num_freq]; //volumes for each frequency band
+    
     private float master_volume = 1;
 
-    private float reverb_strength = 0; //not necessary unless we need to pull the active reverb for whatever reason
+    private float reverb_strength = 1; //not necessary unless we need to pull the active reverb for whatever reason
     private Reverb rvb;
+
     
-    float[] peak = new float[num_freq]; // used to compare recent audio intensity levels for scaling to the the standard range
+    
+    //-------------------------------------------------------------------------------
+    // Memory management----------------------------------------------------------------
+    //-------------------------------------------------------------------------------
 
     //call for clean memory deallocation of currently active file
     void dispose()
@@ -92,27 +97,31 @@ class AudioController
         if (audio != null)
         {
             audio.stop();
-            audio = null;
+            audio.removeFromCache();
         }
     }
 
-    //Loads song file into the Controller
-    void loadSong (PApplet app, String fname) // For the applet just type 'this' to get a reference to the running process
+
+    //Loads song file into the Controller returns boolean based on if a file was selected.
+    public void loadSong (String filePath) // For the applet just type 'this' to get a reference to the running process
     {
-        dispose();
-        audio = new SoundFile(app, fname);
-        fft.input(audio);
         
+        dispose();
+        audio = new SoundFile(application, filePath);
+        fft.input(audio);
+        println("song chosen ", filePath);
+        audio.play();
     }
 
     
     //Constructor for the Controller
     AudioController(PApplet app) // For the applet just type 'this' to get a reference to the running process
     {
+        application = app;
         fft = new FFT(app, num_freq);
         rvb = new Reverb(app);
 
-        for (int i = 0; i < freq_volume.length; i++) freq_volume[i] = 1; //initizlize frequency band volume
+       
         for (int i = 0; i < smooth.length; i++) smooth[i] = 0;
         for (int i = 0; i < peak.length; i++) peak[i] = .5;
 
@@ -227,7 +236,7 @@ class AudioController
     //-------------------------------------------------------------------------------
     // Change Effects----------------------------------------------------------------
     //-------------------------------------------------------------------------------
-
+    
     /*
     Takes in a single float 0-1 
 
@@ -251,20 +260,62 @@ class AudioController
         
     }
 
+    void set_volume(float strength)
+    {
+        strength = constrain(strength,0,1);
+        master_volume = (strength);
+        audio.amp(strength);
+    }
+
+    //-------------------------------------------------------------------------------
+    //flow control-------------------------------------------------------------------
+    //-------------------------------------------------------------------------------
+
+    void pause()                // toggle pause
+    {
+        if (!audio.isPlaying())audio.play();
+        else audio.pause();
+    }
+
+    void offset_time (int time) //time in seconds can be negative
+    {
+        audio.jump(audio.position() + time);
+    }
+
+    void set_speed (float sp)   //updates speed. Currently will distort pitch.
+    {
+        audio.rate(sp);
+    }
+
+    void jump(float percent)    // for progress bar jumps expects 0-1
+    {
+        percent = constrain(percent, 0.0, 1.0);
+        audio.jump(percent * (audio.position()/audio.duration())); // automatically rescales. 
+    }
+
+    void change_rate(float speed) //shifts pitch as a side effect.
+    {
+        audio.rate(speed);
+    }
+    
 
     //-----------------------------------------------------------------------------
     //Getters ---------------------------------------------------------------------
     //-----------------------------------------------------------------------------
-    float[] bands() {return bands;}
+    float[] bands()             {return bands;}
     
 
-    int get_num_bands(){ return num_bands;}
+    int get_num_bands()        { return num_bands;}
    
 
-    int get_num_freq() {return num_freq;}
+    int get_num_freq()         {return num_freq;}
 
-    boolean get_is_beat() {return is_beat;}
+    boolean get_is_beat()      {return is_beat;}
     float get_beat_amplitude() {return beat_amplitude;}
+
+    boolean is_play()          {return audio.isPlaying();}
+    float get_time()           {return audio.position();}
+    float get_duration()       {return audio.duration();}
     
     void start()
     {
