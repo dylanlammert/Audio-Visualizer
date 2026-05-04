@@ -93,12 +93,17 @@ class AudioController
 
         out = minim.getLineOut();   //create the audio output object
 
+        
+        //Gain gn = new Gain(10);
         audio.patch(out);
+
     
         fft = new FFT(out.bufferSize(), 44100);
         fft.logAverages(11, 1); //this automatically fixes the log issue and will give us 12 frequncy bands that are nice visually
         fft.window((FFT.HAMMING)); //windowing functin that cleans up the sound wave going into FFT
        
+
+
 
         smooth = new float[fft.avgSize()];
         peak = new float[fft.avgSize()];
@@ -132,7 +137,7 @@ class AudioController
     */
     void update()
     {
-        audio.patch(low).patch(mid).patch(high);
+        //audio.patch(low).patch(mid).patch(high);
         fft.forward(out.mix);//stores the frequency bands. Needs rescaled values will be ~ .05
         
         float[] normalized = new float[fft.avgSize()];
