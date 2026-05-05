@@ -1,0 +1,34 @@
+To call the constructor pass "this" eg. AudioController(this); It needs a reference to the running process
+
+LoadSong(filePath) // string of the full file address should be able to reach outside of data folder
+
+update() to be called in draw, refreshes outgoing data for FFT and beat detection so visuals maintain accuracy
+
+masterReverbasterGain(float 0.0 - 1.0) adjusts volume of whole track
+    To control the individual frequency ranges volume
+    lowGain()
+    midGain()
+    highGain()
+    
+
+Reverb follows the same name and argument structure as Gain: masterReverb, lowReverb, etc.
+
+.pause() toggles playback
+
+offset_time fixed amount time jumps like skip ahead 500 miliseconds
+
+set_speed() currently doesn't work should change play rate
+
+jump() built for progress bar jumping. Receives float 0.0 -1.0 (percentage of point on bar clicked) 
+    automatically maps to the correct point in audio
+
+bands() will return the final processed FFT data for visualization bars.
+get_num_bands() amount of bands should always be 12
+
+get_is_beat() return Bool whether or not the current data sample includes a beat
+get_beat_amplitude() amplitude of the 4 base bands during beat
+
+bool is_play() returns whether it is currently paused
+
+get_time() current playback time (when in the audio we are) in miliseconds
+get_duration() max audio duration in miliseconds
