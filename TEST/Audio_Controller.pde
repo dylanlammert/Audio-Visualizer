@@ -50,20 +50,43 @@ class AudioController
 
 
     /* 
-    effect data
+    effect nodes:
+    MoogFilter isolate frequency ranges (imperfectly)
+
+    Gain controls volume sensitivity
+
+    Delay adds an echo (reverb)
     */
-   MoogFilter low;
-   MoogFilter mid;
-   MoogFilter high;
+    private MoogFilter low;
+    private MoogFilter mid;
+    private MoogFilter high;
+
+    private Gain lGain;
+    private Gain mGain;
+    private Gain hGain;
+
+    private Delay lwet; //wetness refers to how proceessed a signal is
+    private Delay mwet;
+    private Delay hwet;
+
+    private Summer lrvb; //merge wet and dry signals
+    private Summer mrvb;
+    private Summer hrvb;
+    
+    private Summer merge; //special node that can merge multiple audio inputs
+    private Gain fullGain;
+    private Delay fullWet;
+    private Summer master;
+   
+    
 
 
     /*
     input data
     */
-    
-    private float master_volume = 1;
+    float play_rate_base;
 
-    private float reverb_strength = 1; //not necessary unless we need to pull the active reverb for whatever reason
+    
    
 
     
@@ -72,46 +95,80 @@ class AudioController
     // Memory management----------------------------------------------------------------
     //-------------------------------------------------------------------------------
 
-    // //call for clean memory deallocation of currently active file
-    // void dispose()
-    // {
-    //     if (audio != null)
-    //     {
-    //         audio.paus();
-    //         audio.removeFromCache();
-    //     }
-    // }
+    //call for clean memory deallocation of currently active file
+    void clearSong()
+    {
+        if (audio != null)
+        {
+            audio.close();
+        }
+    }
 
 
     //Loads song file into the Controller
     public void loadSong (String filePath) // For the applet just type 'this' to get a reference to the running process
     {
+        if (audio != null)
+        {
+            audio.pause();
+            audio.close();
+        }
         audio = new FilePlayer(minim.loadFileStream(filePath));
-        audio.loop();
-        audio.setSampleRate(2048);
-        
-
         out = minim.getLineOut();   //create the audio output object
+        
+
+
+        /*
+        create and branch audio inputs for parallel effects
+        Merge them through a summer, and then process through master effects
+        to feed the final audio output and analysis
+        */
+
+        audio.patch(low); 
+        low.patch(lGain);  
+        lGain.patch(lwet);
+        lwet.patch(lrvb); //    merge wet and dry signals of the reverb process
+        lGain.patch(lrvb);//    |
+        lrvb.patch(merge);//    |
+        
+        audio.patch(mid);
+        mid.patch(mGain);
+        mGain.patch(mwet);
+        mwet.patch(mrvb); //    merge wet and dry signals of the reverb process
+        mGain.patch(mrvb);//    |
+        mrvb.patch(merge);//    |
+        
+        audio.patch(high);
+        high.patch(hGain);
+        hGain.patch(hwet);
+        hwet.patch(hrvb); //    merge wet and dry signals of the reverb process
+        hGain.patch(hrvb);//    |
+        hrvb.patch(merge);//    |
+        
+        merge.patch(fullGain);
+        fullGain.patch(fullWet);
+        fullGain.patch(master);
+        fullWet.patch(master);
+
+        master.patch(out);
+
 
         
-        //Gain gn = new Gain(10);
-        audio.patch(out);
-
-    
-        fft = new FFT(out.bufferSize(), 44100);
+        fft = new FFT(out.bufferSize(), out.sampleRate());
         fft.logAverages(11, 1); //this automatically fixes the log issue and will give us 12 frequncy bands that are nice visually
         fft.window((FFT.HAMMING)); //windowing functin that cleans up the sound wave going into FFT
        
 
 
-
+        play_rate_base = audio.sampleRate();
         smooth = new float[fft.avgSize()];
         peak = new float[fft.avgSize()];
         for (int i = 0; i < smooth.length; i++) smooth[i] = 0;
         for (int i = 0; i < peak.length; i++) peak[i] = .5;
          
         println("song chosen ", filePath);
-        audio.play();
+        audio.loop();
+        
     }
 
     
@@ -120,10 +177,36 @@ class AudioController
     {
         application = app;
         minim = new Minim(app);
+
         
-        low  = new MoogFilter(200, .7, MoogFilter.Type.LP);
-        mid  = new MoogFilter(1000, .8, MoogFilter.Type.BP);
-        high = new MoogFilter(5000, .5, MoogFilter.Type.HP);
+        
+        low  = new MoogFilter(300, .5, MoogFilter.Type.LP);
+        mid  = new MoogFilter(1500, .6, MoogFilter.Type.BP);
+        high = new MoogFilter(4000, .5, MoogFilter.Type.HP);
+
+        lGain = new Gain(0);
+        mGain = new Gain(0);
+        hGain = new Gain(0);
+
+        lwet = new Delay(1, .1, true, false);
+        mwet = new Delay(1, .1, true, false);
+        hwet = new Delay(1, .1, true, false);
+
+        
+
+        lrvb = new Summer();
+        
+        mrvb = new Summer();
+        hrvb = new Summer();
+
+
+        merge = new Summer();
+        fullGain = new Gain(0);
+        fullWet = new Delay(1, .1, true, false);
+        fullWet.setDelTime(0); 
+
+       
+        master  = new Summer();
     }
 
     // -------------------------------------------------------------------------------
@@ -157,8 +240,6 @@ class AudioController
             smooth[i] = lerp(smooth[i], normalized[i], .01);
             
         }
-        
-        
         
         detectBeat();
     }
@@ -208,66 +289,113 @@ class AudioController
     uses that number to scale the various arguments for reverb effects
     sets them and activates the reverb
     */
-    // void set_reverb(float strength)
-    // {
-    //     strength = constrain(strength,0,1);
-    //     reverb_strength = strength;
 
-    //     if (strength > 0)
-    //     {
-    //         rvb.damp(strength * .5);                //Limits high notes
-    //         rvb.room(map(strength, 0, 1, .2, .8));  //simulates room size of the echo effect
-    //         rvb.wet(map(strength, 0, 1, 0, .6));    //general strength of the reverb
+    void masterGain(float strength)
+    {
+        strength = constrain(strength,0,1);
+        strength = map(strength, 0, 1, -6, 6);
+        println("strength", strength);
+        fullGain.setValue(strength);
+    }
+
+    void lowGain(float strength)
+    {
+        strength = constrain(strength,0,1);
+        strength = map(strength, 0, 1, -6, 6);
+        println("strength", strength);
+        lGain.setValue(strength);
+    }
+
+    void midGain(float strength)
+    {
+        strength = constrain(strength,0,1);
+        strength = map(strength, 0, 1, -6, 6);
+        println("strength", strength);
+        mGain.setValue(strength);
+    }
+    void highGain(float strength)
+    {
+        strength = constrain(strength,0,1);
+        strength = map(strength, 0, 1, -6, 6);
+        println("strength", strength);
+        hGain.setValue(strength);
+    }
+
+    void masterReverb(float strength)
+    {
+        strength = constrain(strength,0,1);
+        float time = map(strength, 0, 1, 0, .3);
+        float amp = map(strength, 0, 1, 0, .2);
 
 
-    //         rvb.process(audio);
-    //     } else rvb.stop();
-        
-    // }
+        fullWet.setDelTime(time);
+        fullWet.setDelAmp(amp);
+    }
+     void lowReverb(float strength)
+    {
+        strength = constrain(strength,0,1);
+        float time = map(strength, 0, 1, 0, .3);
+        float amp = map(strength, 0, 1, 0, .2);
 
-    // void set_volume(float strength)
-    // {
-    //     strength = constrain(strength,0,1);
-    //     master_volume = (strength);
-    //     //audio.amp(strength);
-    // }
+
+        mwet.setDelTime(time);
+        mwet.setDelAmp(amp);
+    }
+     void midReverb(float strength)
+    {
+        strength = constrain(strength,0,1);
+        float time = map(strength, 0, 1, 0, .3);
+        float amp = map(strength, 0, 1, 0, .2);
+
+
+        mwet.setDelTime(time);
+        mwet.setDelAmp(amp);
+    }
+     void highReverb(float strength)
+    {
+        strength = constrain(strength,0,1);
+        float time = map(strength, 0, 1, 0, .3);
+        float amp = map(strength, 0, 1, 0, .2);
+
+
+        hwet.setDelTime(time);
+        hwet.setDelAmp(amp);
+    }
 
     //-------------------------------------------------------------------------------
     //flow control-------------------------------------------------------------------
     //-------------------------------------------------------------------------------
 
-    // void pause()                // toggle pause
-    // {
-    //     if (!audio.isPlaying())audio.play();
-    //     else audio.pause();
-    // }
+    void pause()                // toggle pause
+    {
+        if (!audio.isPlaying())audio.play();
+        else audio.pause();
+    }
 
-    // void offset_time (int time) //time in seconds can be negative
-    // {
-    //     audio.jump(audio.position() + time);
-    // }
+    void offset_time (int time) //time in mili seconds can be negative
+    {
+        audio.skip(time);
+    }
 
-    // void set_speed (float sp)   //updates speed. Currently will distort pitch.
-    // {
-    //     audio.rate(sp);
-    // }
+    void set_speed (float sp)   //updates speed. Currently will distort pitch.
+    {
+        println(sp * play_rate_base);
+        audio.setSampleRate(sp * play_rate_base);
+    }
 
-    // void jump(float percent)    // for progress bar jumps expects 0-1
-    // {
-    //     percent = constrain(percent, 0.0, 1.0);
-    //     audio.jump(percent * (audio.position()/audio.duration())); // automatically rescales. 
-    // }
+    void jump(float percent)    // for progress bar jumps expects 0-1
+    {
+        percent = constrain(percent, 0.0, 1.0);
+        int time = int(percent * (audio.position()/audio.length()));
+        audio.cue(time); // automatically rescales. 
+    }
 
-    // void change_rate(float speed) //shifts pitch as a side effect.
-    // {
-    //     audio.rate(speed);
-    // }
     
 
     //-----------------------------------------------------------------------------
     //Getters ---------------------------------------------------------------------
     //-----------------------------------------------------------------------------
-    float[] bands()             {return smooth;}
+    float[] bands()            {return smooth;}
     int get_num_bands()        {return fft.avgSize();}
 
     boolean get_is_beat()      {return is_beat;}
@@ -275,14 +403,7 @@ class AudioController
 
     boolean is_play()          {return audio.isPlaying();}
     float get_time()           {return audio.position();}
-    //float get_duration()     {return audio.duration();}
-    
-    // void start()
-    // {
-    //     audio.play();
-    //     println("Audio frames:", audio.frames());
-    //     println(audio.duration());
-    //     audio.amp(1);
-    // }
+    float get_duration()       {return audio.length();}   
+
 }
 

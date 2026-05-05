@@ -5,7 +5,7 @@ AudioController ac;
 
 int num_bands;
 int bar_w; 
-float reverb_strength = .0;
+float strength = 1;
 boolean file_is_selected; 
 
 void setup()
@@ -14,11 +14,14 @@ void setup()
     pixelDensity(1);
 
     ac  = new AudioController(this);
+    ac.masterGain(.5);
+    ac.masterReverb(0);//don't understand why, but have to set these to zero. Doing it manually it the constructor doesn't stick.
+    ac.lowReverb(0);
+    ac.midReverb(0);
+    ac.highReverb(0);
 
     
     file_is_selected = false;
-    
-    
 }
 
 void draw()
@@ -58,38 +61,38 @@ void draw()
 void keyReleased()
 {
 
-    // if (key == 'p')
-    // {
-    //     if (!ac.is_play())
-    //     {
-    //         ac.pause();
-    //     } else 
-    //     {
-    //         ac.pause();
-    //     }
-    // }
+    if (key == 'p')
+    {
+        if (!ac.is_play())
+        {
+            ac.pause();
+        } else 
+        {
+            ac.pause();
+        }
+    }
 
     if (key == 'f')
     {
         selectInput("Choose a file:", "fileSelected");
     }
     
-    // if (key == CODED)
-    // {
-    //     if (keyCode == UP)
-    //     {
-    //         reverb_strength += .1;
-    //         ac.set_speed(reverb_strength);
-    //         println(reverb_strength);
-    //     }
+    if (key == CODED)
+    {
+        if (keyCode == UP)
+        {
+            strength += .1;
+            ac.set_speed(strength);
+            //println(strength);
+        }
 
-    //     if (keyCode == DOWN)
-    //     {
-    //         reverb_strength -= .1;
-    //         ac.set_speed(reverb_strength);
-    //         println(reverb_strength);
-    //     }
-    // }
+        if (keyCode == DOWN)
+        {
+            strength -= .1;
+            ac.set_speed(strength);
+            //println(strength);
+        }
+    }
 }
 
 void fileSelected(File selection)
@@ -105,9 +108,3 @@ void fileSelected(File selection)
         println("File window was closed or interrupted");
     }
 }
-
-//called on process close. Ensures clean memory deallocation. 
-// void stop()
-// {
-//     super.stop();
-// }
