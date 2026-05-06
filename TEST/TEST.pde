@@ -31,6 +31,7 @@ void draw()
     fill(255, 0, 0);
     if ((file_is_selected))
     {
+        
         num_bands = ac.get_num_bands();
         bar_w = width/num_bands;
         if(ac.is_play())
@@ -81,14 +82,14 @@ void keyReleased()
     {
         if (keyCode == UP)
         {
-            strength += .1;
+            strength += .05;
             ac.set_speed(strength);
             //println(strength);
         }
 
         if (keyCode == DOWN)
         {
-            strength -= .1;
+            strength -= .05;
             ac.set_speed(strength);
             //println(strength);
         }

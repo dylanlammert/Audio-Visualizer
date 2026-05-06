@@ -57,6 +57,9 @@ class AudioController
 
     Delay adds an echo (reverb)
     */
+
+    private TickRate tick;
+
     private MoogFilter low;
     private MoogFilter mid;
     private MoogFilter high;
@@ -108,49 +111,54 @@ class AudioController
     //Loads song file into the Controller
     public void loadSong (String filePath) // For the applet just type 'this' to get a reference to the running process
     {
-        if (audio != null)
+        if (audio != null) // if this isn't the first load
         {
             audio.pause();
             audio.close();
+            audio = new FilePlayer(minim.loadFileStream(filePath)); //without this is somehow remembered old song
+            audio.patch(tick);
+            
+        } else // if this is the first load
+        {
+            audio = new FilePlayer(minim.loadFileStream(filePath));
+        
+            /*
+            create and branch audio inputs for parallel effects
+            Merge them through a summer, and then process through master effects
+            to feed the final audio output and analysis
+            */
+
+            audio.patch(tick);
+
+            tick.patch(low); 
+            low.patch(lGain);  
+            lGain.patch(lwet);
+            lwet.patch(lrvb); //    merge wet and dry signals of the reverb process
+            lGain.patch(lrvb);//    |
+            lrvb.patch(merge);//    |
+            
+            tick.patch(mid);
+            mid.patch(mGain);
+            mGain.patch(mwet);
+            mwet.patch(mrvb); //    merge wet and dry signals of the reverb process
+            mGain.patch(mrvb);//    |
+            mrvb.patch(merge);//    |
+            
+            tick.patch(high);
+            high.patch(hGain);
+            hGain.patch(hwet);
+            hwet.patch(hrvb); //    merge wet and dry signals of the reverb process
+            hGain.patch(hrvb);//    |
+            hrvb.patch(merge);//    |
+            
+            merge.patch(fullGain);
+            fullGain.patch(fullWet);
+            fullGain.patch(master);
+            fullWet.patch(master);
+
+            master.patch(out);
         }
-        audio = new FilePlayer(minim.loadFileStream(filePath));
-        out = minim.getLineOut();   //create the audio output object
         
-
-
-        /*
-        create and branch audio inputs for parallel effects
-        Merge them through a summer, and then process through master effects
-        to feed the final audio output and analysis
-        */
-
-        audio.patch(low); 
-        low.patch(lGain);  
-        lGain.patch(lwet);
-        lwet.patch(lrvb); //    merge wet and dry signals of the reverb process
-        lGain.patch(lrvb);//    |
-        lrvb.patch(merge);//    |
-        
-        audio.patch(mid);
-        mid.patch(mGain);
-        mGain.patch(mwet);
-        mwet.patch(mrvb); //    merge wet and dry signals of the reverb process
-        mGain.patch(mrvb);//    |
-        mrvb.patch(merge);//    |
-        
-        audio.patch(high);
-        high.patch(hGain);
-        hGain.patch(hwet);
-        hwet.patch(hrvb); //    merge wet and dry signals of the reverb process
-        hGain.patch(hrvb);//    |
-        hrvb.patch(merge);//    |
-        
-        merge.patch(fullGain);
-        fullGain.patch(fullWet);
-        fullGain.patch(master);
-        fullWet.patch(master);
-
-        master.patch(out);
 
 
         
@@ -169,6 +177,7 @@ class AudioController
         println("song chosen ", filePath);
         audio.loop();
         
+        println("O: " ,  out.getFormat(), "A: ", audio.getMetaData());
     }
 
     
@@ -177,8 +186,9 @@ class AudioController
     {
         application = app;
         minim = new Minim(app);
+        out = minim.getLineOut();   //create the audio output object
 
-        
+        tick = new TickRate();
         
         low  = new MoogFilter(300, .5, MoogFilter.Type.LP);
         mid  = new MoogFilter(1500, .6, MoogFilter.Type.BP);
@@ -240,7 +250,7 @@ class AudioController
             smooth[i] = lerp(smooth[i], normalized[i], .01);
             
         }
-        
+
         detectBeat();
     }
 
@@ -379,8 +389,8 @@ class AudioController
 
     void set_speed (float sp)   //updates speed. Currently will distort pitch.
     {
-        println(sp * play_rate_base);
-        audio.setSampleRate(sp * play_rate_base);
+        println(sp);
+        tick.value.setLastValue(sp);
     }
 
     void jump(float percent)    // for progress bar jumps expects 0-1
