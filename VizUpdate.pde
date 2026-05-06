@@ -203,6 +203,7 @@ void keyPressed() {
   }
   if(key == 'v'){
     layout = !layout;
+    if(!layout) file.play();
   }
     if (key == 'd') {
     count += 10000;
