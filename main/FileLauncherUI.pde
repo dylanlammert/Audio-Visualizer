@@ -22,7 +22,8 @@ class FileLauncherUI extends Section{
     float scrollY = 0;
     int scrollRate = 24;  
     int textHeight = 24; 
-    int currentFolderUIHeight = 24; 
+    int currentFolderUIHeight = 32; 
+    int padding = 12;
 
     /**
         @brief class constructor that calls the super class constructor
@@ -43,8 +44,8 @@ class FileLauncherUI extends Section{
         } else {
             // display current folder directory and contents
             fill(255,255,255);
-            currentFolderUI();
             scrollableList();
+            currentFolderUI();
         }
     }
 
@@ -57,17 +58,19 @@ class FileLauncherUI extends Section{
         * create an image that shows what the file type is
     */
     void currentFolderUI(){
-        String label = currentFolder.getName();
+        String label = textChop(currentFolder.getName(), int(endX - textWidth("new project") - 6 - padding));
         
-        fill(colorTheme.tertiaryBackground);
-        rect(0, 0, int(endX), currentFolderUIHeight);
+        fill(colorTheme.secondaryBackground);
+        rect(0, 0, int(endX), currentFolderUIHeight + padding);
         fill(colorTheme.primaryText);
         textAlign(LEFT, CENTER);
-        textSize(18);
-        text(label, 12,0,int(endX), currentFolderUIHeight);
+        textFont(headerFont);
+        textSize(24);
+        text(label, padding,0,int(endX), currentFolderUIHeight);
         textAlign(CENTER, CENTER);
         // change working Directory Button
         newFolderButton();
+        textFont(roboto);
     }
 
     /**
@@ -85,18 +88,18 @@ class FileLauncherUI extends Section{
             currentButtonWidth = int(textWidth(newFolder) + 6);
             currentButtonHeight = textHeight;
             noStroke();
-            rect(endX - textWidth(newFolder) - 6, 0, textWidth(newFolder) + 6,24, rounded, rounded, rounded, rounded);
+            rect(endX - textWidth(newFolder) - 6 - padding, (textHeight/ 4) + padding / 3, textWidth(newFolder) + 6,textHeight, rounded, rounded, rounded, rounded);
             textAlign(CENTER, CENTER);
             fill(colorTheme.linkColor);
-            text(newFolder, endX - textWidth(newFolder) - 6, 0, textWidth(newFolder) + 6, 20);
+            text(newFolder, endX - textWidth(newFolder) - 6 - padding, (textHeight / 6) + padding/3, textWidth(newFolder) + 6, textHeight);
         //make a white plus sign that follows the text;
         }else {
             fill(colorTheme.linkColor);
             textAlign(CENTER, CENTER);
             noStroke();
-            rect(endX - textWidth(newFolder) - 6, 0, textWidth(newFolder) + 6,24, rounded, rounded, rounded, rounded);
+            rect(endX - textWidth(newFolder) - 6 - padding, (textHeight/ 4) + padding / 3, textWidth(newFolder) + 6,textHeight, rounded, rounded, rounded, rounded);
             fill(colorTheme.primaryText);
-            text(newFolder, endX - textWidth(newFolder) - 6, 0, textWidth(newFolder) + 6, 20);
+            text(newFolder, endX - textWidth(newFolder) - 6 - padding, (textHeight / 6) + padding / 3, textWidth(newFolder) + 6, textHeight);
         //make a white plus sign that follows the text;
         }
         
@@ -106,7 +109,7 @@ class FileLauncherUI extends Section{
         @brief UI element to make a single fileCard that store the contents of a file
     */
     void fileCard(File filePath, int startY) {
-        String label = textChop(filePath.getName());
+        String label = textChop(filePath.getName(), int(endX));
         if(overButton(0, startY,-1, int(endX), 25 )){
             fill(colorTheme.hoverButton);
             potentialCurrentFile = filePath;
@@ -134,15 +137,20 @@ class FileLauncherUI extends Section{
         text(label,12, startY, int(endX), 25);
     }
 
-    String textChop(String bigString){
+    /**
+        @brief helper function for text formatting if the file name is larger than 
+               the file launcher width
+        @param bigString this is the string to be shortened
+    */
+    String textChop(String bigString, int boxWidth){
         String smallString = bigString;
         String front = "", back = "";
         // need to determine half the width of available space
-        int halfWidth = int(endX - textWidth("...") - 24) / 2;
+        int halfWidth = int(boxWidth - textWidth("...") - 24) / 2;
         int cutIndex = 0;
         int cutAmount = 0;
 
-        if( textWidth(bigString) > endX - 6){
+        if( textWidth(bigString) > boxWidth - 6){
             cutIndex = int(bigString.length() / 2);
 
             // create the beginning of the string
@@ -168,9 +176,9 @@ class FileLauncherUI extends Section{
         @brief this is the drawable function that will be the main file view
     */
     void scrollableList() {
-        clip(0,24,int(endX), int(endY) - 24);
+        clip(0,currentFolderUIHeight,int(endX), int(endY) - currentFolderUIHeight);
         for (int i = 0; i< accessableFiles.length; i++) {
-            fileCard(accessableFiles[i], 24 + (i * 24) - int(scrollY));
+            fileCard(accessableFiles[i], currentFolderUIHeight + (i * textHeight) - int(scrollY));
         }
         noClip();
     }
@@ -260,7 +268,7 @@ class FileLauncherUI extends Section{
         if(mouseX >= startX && mouseX <= endX){
             if(mouseY >= 25 && mouseY <= endY){
                 // array length * fileContainer height - the height of the screen
-                float maxScroll = ((accessableFiles.length * 24) -(endY + 24));
+                float maxScroll = ((accessableFiles.length * 24) -(endY + currentFolderUIHeight));
                 scrollY = constrain(scrollY + (delta * scrollRate), 0, maxScroll);
             }
 

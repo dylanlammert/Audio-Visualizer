@@ -22,7 +22,7 @@ float t, scrubVal;
 FileLauncherUI fileLauncher;
 Theme colorTheme;
 PImage openFolder;
-
+PFont headerFont, roboto;
 AudioController ac;
 
 void setup() {
@@ -31,6 +31,9 @@ void setup() {
   //fullScreen();
   mainX = width * .8;
   mainY = height * .75;
+  // text setup
+  headerFont = createFont("Jersey10Charted-Regular.ttf", 18);
+  roboto = createFont("RobotoMono-VariableFont_wght.ttf", 14);
   textAlign(CENTER);
   paused = true;
   fileLauncherEndX = 300;
