@@ -1,0 +1,147 @@
+To call the constructor pass "this" eg. AudioController(this); It needs a reference to the running process
+
+LoadSong(filePath) // string of the full file address should be able to reach outside of data folder
+
+update() to be called in draw, refreshes outgoing data for FFT and beat detection so visuals maintain accuracy
+
+masterReverbasterGain(float 0.0 - 1.0) adjusts volume of whole track
+    To control the individual frequency ranges volume
+    lowGain()
+    midGain()
+    highGain()
+    
+
+Reverb follows the same name and argument structure as Gain: masterReverb, lowReverb, etc.
+
+.pause() toggles playback
+
+offset_time fixed amount time jumps like skip ahead 500 miliseconds
+
+set_speed() currently doesn't work should change play rate
+
+jump() built for progress bar jumping. Receives float 0.0 -1.0 (percentage of point on bar clicked) 
+    automatically maps to the correct point in audio
+
+bands() will return the final processed FFT data for visualization bars.
+get_num_bands() amount of bands should always be 12
+
+get_is_beat() return Bool whether or not the current data sample includes a beat
+get_beat_amplitude() amplitude of the 4 base bands during beat
+
+bool is_play() returns whether it is currently paused
+
+get_time() current playback time (when in the audio we are) in miliseconds
+get_duration() max audio duration in miliseconds
+
+
+
+String[] fname = {"Still Feel - Half Alive.wav", "Clocks - Coldplay.mp3", "Live Concert - Thomas Day.mp3", "High Hopes - Panic! at the disco.mp3"} ;
+
+AudioController ac;
+
+int num_bands;
+int bar_w; 
+float strength = 1;
+boolean file_is_selected; 
+
+void setup()
+{
+    size(1000, 750);
+    pixelDensity(1);
+
+    ac  = new AudioController(this);
+    ac.masterGain(.5);
+    ac.masterReverb(0);//don't understand why, but have to set these to zero. Doing it manually it the constructor doesn't stick.
+    ac.lowReverb(0);
+    ac.midReverb(0);
+    ac.highReverb(0);
+
+    
+    file_is_selected = false;
+}
+
+void draw()
+{
+    background(0);
+    
+    fill(255, 0, 0);
+    if ((file_is_selected))
+    {
+        
+        num_bands = ac.get_num_bands();
+        bar_w = width/num_bands;
+        if(ac.is_play())
+        {
+            ac.update();
+            float [] b = ac.bands();
+            for(int i = 0; i < ac.get_num_bands(); i++)
+            {   
+        
+                float bar_h = (b[i] * (height * .5));
+                rect(bar_w * i, height, bar_w, (int)-bar_h);
+                //println(i, ac.bands[i]);
+            }
+
+            int radius = 50; 
+            if (ac.get_is_beat()) 
+            {   
+                fill(0, 255, 0);
+                radius += 50 * ac.get_beat_amplitude();
+                //println("beat", ac.get_beat_amplitude());
+            }
+        
+            circle(100, 100, radius);
+        }
+    } 
+}
+
+void keyReleased()
+{
+
+    if (key == 'p')
+    {
+        if (!ac.is_play())
+        {
+            ac.pause();
+        } else 
+        {
+            ac.pause();
+        }
+    }
+
+    if (key == 'f')
+    {
+        selectInput("Choose a file:", "fileSelected");
+    }
+    
+    if (key == CODED)
+    {
+        if (keyCode == UP)
+        {
+            strength += .05;
+            ac.set_speed(strength);
+            //println(strength);
+        }
+
+        if (keyCode == DOWN)
+        {
+            strength -= .05;
+            ac.set_speed(strength);
+            //println(strength);
+        }
+    }
+}
+
+void fileSelected(File selection)
+{
+    if (selection != null)
+    {
+        
+        ac.loadSong(selection.getAbsolutePath());
+        file_is_selected = true;
+        //pause = false;
+    }else 
+    {
+        println("File window was closed or interrupted");
+    }
+}
