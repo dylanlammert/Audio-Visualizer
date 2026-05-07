@@ -141,14 +141,14 @@ class AudioController
             mid.patch(mGain);
             mGain.patch(mwet);
             mwet.patch(mrvb); //    merge wet and dry signals of the reverb process
-            mGain.patch(mrvb);//    |
+            mGain.patch(lrvb);//    |
             mrvb.patch(merge);//    |
             
             tick.patch(high);
             high.patch(hGain);
             hGain.patch(hwet);
             hwet.patch(hrvb); //    merge wet and dry signals of the reverb process
-            hGain.patch(hrvb);//    |
+            hGain.patch(lrvb);//    |
             hrvb.patch(merge);//    |
             
             merge.patch(fullGain);
@@ -296,32 +296,44 @@ class AudioController
     uses that number to scale the various arguments for reverb effects
     sets them and activates the reverb
     */
-
     void masterGain(float strength)
     {
-        strength = constrain(strength,0,1);
-        strength = map(strength, 0, 1, -6, 6);
-        fullGain.setValue(strength);
+        if (strength != 0) 
+        {
+            strength = constrain(strength,0,1);
+            strength = map(strength, 0, 1, -12, 12);
+            fullGain.setValue(strength);
+        } else fullGain.setValue (-60);
+        
     }
 
     void lowGain(float strength)
     {
-        strength = constrain(strength,0,1);
-        strength = map(strength, 0, 1, -6, 6);
-        lGain.setValue(strength);
+        if (strength != 0) 
+        {
+            strength = constrain(strength,0,1);
+            strength = map(strength, 0, 1, -12, 12);
+            lGain.setValue(strength);
+        } else lGain.setValue (-60);
     }
 
     void midGain(float strength)
     {
-        strength = constrain(strength,0,1);
-        strength = map(strength, 0, 1, -6, 6);
-        mGain.setValue(strength);
+        if (strength != 0) 
+        {
+            strength = constrain(strength,0,1);
+            strength = map(strength, 0, 1, -12, 12);
+            mGain.setValue(strength);
+        } else mGain.setValue (-60);
     }
     void highGain(float strength)
     {
-        strength = constrain(strength,0,1);
-        strength = map(strength, 0, 1, -6, 6);
-        hGain.setValue(strength);
+        if (strength != 0) 
+        {
+            strength = constrain(strength,0,1);
+            strength = map(strength, 0, 1, -12, 12);
+            hGain.setValue(strength);
+        } else hGain.setValue (-60);
     }
 
     void masterReverb(float strength)
@@ -388,8 +400,10 @@ class AudioController
     void jump(float percent)    // for progress bar jumps expects 0-1
     {
         percent = constrain(percent, 0.0, 1.0);
-        int time = int(percent * (audio.position()/audio.length()));
-        audio.cue(time); // automatically rescales. 
+        println("p", percent);
+        float time = (float)(percent * audio.length());
+        println("t", time);
+        audio.cue(floor(time)); // automatically rescales. 
         audio.play();
     }
 
