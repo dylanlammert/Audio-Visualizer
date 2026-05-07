@@ -397,13 +397,9 @@ class AudioController
         tick.value.setLastValue(sp);
     }
 
-    void jump(float percent)    // for progress bar jumps expects 0-1
+    void jump(float time)    // for progress bar j
     {
-        percent = constrain(percent, 0.0, 1.0);
-        println("p", percent);
-        float time = (float)(percent * audio.length());
-        println("t", time);
-        audio.cue(floor(time)); // automatically rescales. 
+        audio.cue(floor(time));
         audio.play();
     }
 
@@ -423,4 +419,3 @@ class AudioController
     float get_duration()       {return audio.length();}   
 
 }
-

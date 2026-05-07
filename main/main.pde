@@ -10,7 +10,6 @@
 
 */
 float mainX, mainY, fileLauncherEndX;
-Boolean paused;
 Section main, progress, right, bottom, corner;
 SliderH totalVol, lowVol, midVol, highVol; // total, low frequency, mid frequency, and high frequency volume
 SliderH speed, totalReverb, lowReverb, midReverb, highReverb;
@@ -25,6 +24,31 @@ Theme colorTheme;
 PImage openFolder;
 PFont headerFont, roboto;
 AudioController ac;
+
+Minim minim;
+AudioOutput out;
+AudioPlayer player;
+FilePlayer file;
+FFT fft;
+BeatDetect beat;
+int vizMode = 5;
+int waveAmp = 200;
+int beatFlash = 0;//to capture beats and fade the flash out
+float[] save;
+float[] allsave;
+int totalamount = 0;
+boolean paused = false;
+boolean layout = false;
+boolean mousepress = false;
+boolean start = false;
+int count = 1000;
+float secondTime = 0;
+int movecursor = 0;
+int x = 0;
+float startX = 0.0,endX = 0.0;
+boolean click = true;
+float mainsectionY = 0.0;
+
 
 void setup() {
   size(1600, 1000);
@@ -68,14 +92,11 @@ void setup() {
   highReverb = new SliderH("High Frequency Reverb", 0, 10, 3, 1, bottom, 1);
   
   // buttons in right section
-  mode1 = new Button("Default", 0, 0, right);
-  mode2 = new Button("Mode 2", 0, 1, right);
-  mode3 = new Button("Mode 3", 0, 2, right);
-  mode4 = new Button("Mode 4", 0, 3, right);
-  mode5 = new Button("Mode 5", 0, 4, right);
-  
-  
-  
+  mode1 = new Button("Wave", 0, 0, right);
+  mode2 = new Button("WaveDraw", 0, 1, right);
+  mode3 = new Button("FFT", 0, 2, right);
+  mode4 = new Button("Circle", 0, 3, right);
+  mode5 = new Button("Beat", 0, 4, right);
   
   font = createFont("Arial", 18);
   textFont(font);
@@ -86,19 +107,12 @@ void setup() {
   scrubVal = 5000;  // amount to scrub by with forward and backward buttons
 
 
-  ac = new AudioController(this);
-  ac.loadSong("Still Feel - Half Alive.mp3");
-  ac.masterReverb(0);
-  ac.lowReverb(0);
-  ac.midReverb(0);
-  ac.highReverb(0);
-  duration = ac.get_duration();  // replace with actual audio duration
+  
 }
 
 void draw() {
   
   fileLauncher.display();
-  main.display();
   right.display();
   bottom.display();
   progress.display();
@@ -107,12 +121,8 @@ void draw() {
   lowVol.display();
   midVol.display();
   highVol.display();
-  speed.display();
   
-  totalReverb.display();
-  lowReverb.display();
-  midReverb.display();
-  highReverb.display();
+  speed.display();
   
   mode1.display();
   mode2.display();
@@ -120,9 +130,47 @@ void draw() {
   mode4.display();
   mode5.display();
   
+   fill(color(0,0,0));
+    rectMode(CORNER);
+    rect(fileLauncherEndX,0,mainX - 300,mainsectionY);
+  if(start)
+  {
+    
+    fft.forward(out.mix);
+    beat.detect(out.mix);
+    t = file.position();
+    t = ac.get_time();
+    switch(vizMode) {
+      case 0:
+       if(layout)
+        {
+          file.pause();
+          displayWave();
+          if(click)show();
+        }
+        else if(paused)
+        {
+          file.pause();
+          pauseWave();
+        }
+        else{
+          drawWave();
+        }
+        break;
+      case 1:
+        drawFFT();
+        break;
+      case 2:
+        drawCircle();
+        break;
+      case 3:
+        drawBeat();
+        break;
+    }
+  }
   //playPause.display();
 
-  t = ac.get_time();
+ 
   
   if (mousePressed) {
     if (totalVol.mouseIn()  && active == "totalVol") {
@@ -189,8 +237,6 @@ void draw() {
   
   textAlign(CENTER);
   fill(255);
-  text("Main", main.centerX, main.centerY);
-  //text("Right", right.centerX, right.centerY);
   //text("Bottom", bottom.centerX, bottom.centerY);
   
   // progress bar
@@ -291,10 +337,38 @@ void mouseReleased() {
 
   // pause button
   if (inPause() && active == "pause") {
-    paused = !paused;
-    ac.pause();
+    if (paused) {
+      paused = !paused;
+      file.play();
+      ac.pause();
+    } else {
+      ac.pause();
+      paused = !paused;
+    }
   }
-
+  if (mode1.mouseIn()) {
+     vizMode = 0;
+  }
+  if(mode3.mouseIn()){
+    vizMode =1;
+  }
+  if(mode4.mouseIn()){
+    vizMode =2;
+  }
+  if(mode5.mouseIn()){
+    vizMode =3;
+  }
+  if(mode2.mouseIn()){
+    vizMode = 0;
+    if(!paused){
+      ac.pause();
+    }
+    layout = !layout;
+    if(!layout) {
+      file.play();
+    }
+  }
+  
   if(overButton(fileLauncher.currentButtonX, fileLauncher.currentButtonY, -1, fileLauncher.currentButtonWidth, fileLauncher.currentButtonHeight)){
             switch(fileLauncher.currentButton) {
                 case("open file button"):
@@ -308,15 +382,56 @@ void mouseReleased() {
                 case("individual file"):
                   fileLauncher.currentFile = fileLauncher.potentialCurrentFile;
                   println("current file: " + fileLauncher.currentFile.getAbsolutePath());
+                  if(start)
+                  {
+                    file.close();
+                    minim.stop();
+                    minim.stop();
+                    
+                  }
+                  mainsectionY = mainY - 80;
+                  minim = new Minim(this);
+ 
+                  frameRate(60);
+                  out = minim.getLineOut();
+                  file = new FilePlayer(minim.loadFileStream(fileLauncher.currentFile.getAbsolutePath()));
+                  file.patch(out);                                           //sends audio to out stream for audio analyzing/hearing
+                  file.loop();
+
+                  fft = new FFT(out.bufferSize(), out.sampleRate());         //sets up fft to match the forward(out.mix) to eliminate errors 
+                  beat = new BeatDetect(out.bufferSize(), out.sampleRate());
+                  beat.setSensitivity(300);    //increase sensitivity to beats recommend 200-500
+                  secondTime = file.length()/1000.00;
+                  totalamount = 60*out.bufferSize() * int(ceil(secondTime));
+                  save = new float[out.bufferSize()];
+                  allsave = new float[int(totalamount)];
+                  x=0;
+                  vizMode = 0;
+                  duration = floor(file.length() - 12000);
+                  start = true;
+                  Gain mute = new Gain(-60);
+                  file.patch(mute);
+                  ac = new AudioController(this);
+                  ac.loadSong(fileLauncher.currentFile.getAbsolutePath());
+                  ac.masterReverb(0);
+                  ac.lowReverb(0);
+                  ac.midReverb(0);
+                  ac.highReverb(0);
+                  duration = ac.get_duration();  // replace with actual audio duration
+                  break;
                   
             }
         }
   
   // progress bar
   if (inProgress() && active == "progress") { 
-    float mouseT = map(mouseX, progressStart, progressEnd, 0, 1);
-    t = mouseT;
-    ac.jump(t);
+
+    
+    float time = map(mouseX, progressStart, progressEnd, 0, file.length());
+    x = floor(map(mouseX, progressStart, progressEnd, 0, totalamount));
+    file.cue(int(time));
+    ac.jump(time);
+    
   } 
   
   if (inForward() && active == "forward") { 
@@ -332,7 +447,39 @@ void mouseReleased() {
   
   active = "";
 }
-
+void keyPressed() {
+  if (key == '0') {
+    vizMode = 0;
+  }else if (key == '1') {
+    vizMode = 1;
+  }else if (key == '2') {
+    vizMode = 2;
+  }else if (key == '3') {
+    vizMode = 3;
+  }
+  if(key == 'p'){
+    ac.pause();
+    paused = !paused;
+    if(!paused) file.play();
+  }
+  if(key == 'v'){
+    if(!paused){
+      ac.pause();
+    }
+    layout = !layout;
+    if(!layout) {
+      file.play();
+    }
+  }
+    if (key == 'd') {
+    count += 10000;
+    if(count > allsave.length) count = allsave.length -10000;
+  }
+  if (key == 'a') {
+    count -= 10000;
+    if(count < 0) count = 0;
+  }
+}
 void mousePressed() {
   // to ensure that dragging mouse across screen while pressed does not continue to activate other controls
   if (totalVol.mouseIn()) active = "totalVol";
@@ -340,11 +487,6 @@ void mousePressed() {
   if (midVol.mouseIn()) active = "midVol";
   if (highVol.mouseIn()) active = "highlVol";
   if (speed.mouseIn()) active = "speed";
-  if (lowReverb.mouseIn()) active = "lowReverb";
-  if (midReverb.mouseIn()) active = "midReverb";
-  if (highReverb.mouseIn()) active = "highReverb";
-  //if (pitch.mouseIn()) active = "pitch";
-  if (totalReverb.mouseIn()) active = "totalReverb";
   if (inPause()) active = "pause";
   if (inProgress()) active = "progress";
   if (inForward()) active = "forward";
@@ -383,4 +525,117 @@ void mouseWheel(MouseEvent event) {
   // if mouse current scroll position is within bounds of array then allow manipulation
   fileLauncher.scroll(e);
   // if
+}
+void drawWave() {
+  stroke(255);
+  strokeWeight(2);
+  noFill();
+  if(!file.isPlaying()) x=0;
+  for (int i = 0; i < out.bufferSize() -1; i++) {
+    float x1 = map(i, 0, out.bufferSize(),fileLauncherEndX,  mainX);
+    float x2 = map(i+1, 0, out.bufferSize(), fileLauncherEndX,  mainX);
+    float y1 = mainsectionY/2 + out.left.get(i) * waveAmp;
+    float y2 = mainsectionY/2 + out.left.get(i+1) * waveAmp;
+    line(x1, y1, x2, y2);
+    save[i] = out.left.get(i);
+    allsave[x] = out.left.get(i);
+    x++;
+  }
+   
+}
+void displayWave() {
+  stroke(255);
+  strokeWeight(2);
+  noFill();
+  for (int i = 0; i < out.bufferSize() -1; i++) {
+    float x1 = map(i, 0, out.bufferSize(), fileLauncherEndX,  mainX);
+    float x2 = map(i+1, 0, out.bufferSize(),fileLauncherEndX,  mainX);
+    float y1 = mainsectionY/2 + allsave[count + i] * waveAmp;
+    float y2 = mainsectionY/2 + allsave[count + i+1] * waveAmp;
+    line(x1, y1, x2, y2);
+  }
+}
+void pauseWave(){
+  stroke(255);
+  strokeWeight(2);
+  noFill();
+   for (int i = 0; i < out.bufferSize() -1; i++) {
+    float x1 = map(i, 0, out.bufferSize(),fileLauncherEndX,  mainX);
+    float x2 = map(i+1, 0, out.bufferSize(), fileLauncherEndX,  mainX);
+    float y1 = mainsectionY/2 + save[i] * waveAmp;
+    float y2 = mainsectionY/2 + save[i+1] * waveAmp;
+    line(x1, y1, x2, y2);
+   }
+}
+
+void show()
+{
+  fill(color(255));
+  rectMode(CORNER);
+  rect(fileLauncherEndX, mainsectionY - 15,  mainX-300, 15);
+  fill(color(255, 0, 0));
+  fill(color(98,98,98));
+  rect(movecursor + fileLauncherEndX ,mainsectionY-15,20,15);
+  if (mousePressed)
+  {
+    if (mouseY >= (mainsectionY-15) && mouseY <= mainsectionY && mouseX >= fileLauncherEndX && mouseX <=  mainX-20)
+    {
+      click = true;
+      movecursor = mouseX - int(fileLauncherEndX) ;
+      int check = (allsave.length/int(mainX-300))*movecursor;
+      if(check < 0) 
+      {
+      count =0;
+      }
+      else if(check > allsave.length)
+      {
+        count = allsave.length -20000;
+      }
+      else {
+      count = check;
+      }
+    }
+  }
+  /*
+  if(layout && mousepress)
+  {
+    noFill();
+    stroke(255,0,0);
+    rect(startX,0,endX,mainsectionY);
+    println(startX,endX);
+  }
+  */
+}
+void drawFFT() {
+  stroke(255);
+  for (int i = 0; i < fft.specSize(); i++) {                              //fft.specSize returns the length of the array of the FFT out.mix
+    float x = map(i, 0, fft.specSize(),fileLauncherEndX ,  mainX);
+    float h = fft.getBand(i) * 50;
+    line(x, mainsectionY, x, mainsectionY -h);
+  }
+}
+
+void drawCircle() {
+  pushMatrix();
+  translate( mainX/2, mainsectionY/2);
+  for (int i = 0; i <fft.specSize(); i++) {
+    float radian = map(i, 0, fft.specSize(), 0, TWO_PI);                  //set up radian circle to draw on
+    float r = 100 + fft.getBand(i) * 2;                                   //retrieves amplitude of the frequency band
+    float x = cos(radian) * r;
+    float y = sin(radian) * r;
+    stroke(255);
+    line(0, 0, x, y);
+  }
+  popMatrix();
+}
+
+void drawBeat() {
+  if (beat.isKick()) {
+    beatFlash = 255;
+  } else if (beat.isSnare()) {
+    beatFlash = 255;
+  } else {
+    background(beatFlash, 0, 0);
+    beatFlash *= 0.9;                                                 // fade out to be able to visualize it 
+  }
 }
