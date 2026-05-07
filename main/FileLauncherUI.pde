@@ -178,7 +178,7 @@ class FileLauncherUI extends Section{
     void scrollableList() {
         clip(0,currentFolderUIHeight,int(endX), int(endY) - currentFolderUIHeight);
         for (int i = 0; i< accessableFiles.length; i++) {
-            fileCard(accessableFiles[i], currentFolderUIHeight + (i * textHeight) - int(scrollY));
+            fileCard(accessableFiles[i], currentFolderUIHeight + (i * textHeight) - int(scrollY) + (textHeight / 2));
         }
         noClip();
     }

@@ -21,7 +21,6 @@ float duration;
 float t, scrubVal;
 FileLauncherUI fileLauncher;
 Theme colorTheme;
-PImage openFolder;
 PFont headerFont, roboto;
 AudioController ac;
 
@@ -38,8 +37,6 @@ void setup() {
   paused = true;
   fileLauncherEndX = 300;
   
-  
-  openFolder = loadImage("folderOpen.png");
   colorTheme = new Theme();
   fileLauncher = new FileLauncherUI(0, 0, fileLauncherEndX, height, color(40,40,40), 1, 1 );
   main = new Section(fileLauncherEndX, 0, mainX, mainY - 80, color(255, 0, 0), 1, 1);
