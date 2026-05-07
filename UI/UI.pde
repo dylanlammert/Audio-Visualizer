@@ -233,6 +233,7 @@ void mouseReleased() {
                 case("individual file"):
                   fileLauncher.currentFile = fileLauncher.potentialCurrentFile;
                   println("current file: " + fileLauncher.currentFile.getAbsolutePath());
+                  
             }
         }
   
@@ -288,4 +289,16 @@ void folderSelected(File selection) {
     fileLauncher.currentFolder = selection;
     // grab all audio files from within the folder
   }
+}
+
+/**
+
+*/
+void mouseWheel(MouseEvent event) {
+  float e = event.getCount();
+  // if mouse is over the fileLauncher UI then allow manipulation of mouseWheel
+  
+  // if mouse current scroll position is within bounds of array then allow manipulation
+  fileLauncher.scroll(e);
+  // if
 }
