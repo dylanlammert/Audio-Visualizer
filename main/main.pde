@@ -22,7 +22,7 @@ float t, scrubVal;
 FileLauncherUI fileLauncher;
 Theme colorTheme;
 PImage openFolder;
-
+PFont headerFont, roboto;
 AudioController ac;
 
 void setup() {
@@ -31,6 +31,9 @@ void setup() {
   //fullScreen();
   mainX = width * .8;
   mainY = height * .75;
+  // text setup
+  headerFont = createFont("Jersey10Charted-Regular.ttf", 18);
+  roboto = createFont("RobotoMono-VariableFont_wght.ttf", 14);
   textAlign(CENTER);
   paused = true;
   fileLauncherEndX = 300;
@@ -266,6 +269,7 @@ void mouseReleased() {
                 case("individual file"):
                   fileLauncher.currentFile = fileLauncher.potentialCurrentFile;
                   println("current file: " + fileLauncher.currentFile.getAbsolutePath());
+                  
             }
         }
   
@@ -325,4 +329,16 @@ void folderSelected(File selection) {
     fileLauncher.currentFolder = selection;
     // grab all audio files from within the folder
   }
+}
+
+/**
+
+*/
+void mouseWheel(MouseEvent event) {
+  float e = event.getCount();
+  // if mouse is over the fileLauncher UI then allow manipulation of mouseWheel
+  
+  // if mouse current scroll position is within bounds of array then allow manipulation
+  fileLauncher.scroll(e);
+  // if
 }
