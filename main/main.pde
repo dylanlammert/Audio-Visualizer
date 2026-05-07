@@ -13,7 +13,8 @@ float mainX, mainY, fileLauncherEndX;
 Boolean paused;
 Section main, progress, right, bottom, corner;
 SliderH totalVol, lowVol, midVol, highVol; // total, low frequency, mid frequency, and high frequency volume
-SliderH speed, pitch, reverb;
+SliderH speed, totalReverb, lowReverb, midReverb, highReverb;
+Button mode1, mode2, mode3, mode4, mode5;
 PFont font;
 String active;
 float progressStart, progressEnd, progressY;
@@ -34,18 +35,19 @@ void setup() {
   headerFont = createFont("Jersey10Charted-Regular.ttf", 18);
   roboto = createFont("RobotoMono-VariableFont_wght.ttf", 14);
   textAlign(CENTER);
-  paused = true;
+  paused = false;
   fileLauncherEndX = 300;
   
   colorTheme = new Theme();
   fileLauncher = new FileLauncherUI(0, 0, fileLauncherEndX, height, color(40,40,40), 1, 1 );
   main = new Section(fileLauncherEndX, 0, mainX, mainY - 80, color(255, 0, 0), 1, 1);
   progress = new Section(fileLauncherEndX, main.endY, mainX, mainY, color(0), 1, 1);
-  right = new Section(mainX, 0, width, height, color(0, 255, 0), 2, 2);
-  bottom = new Section(fileLauncherEndX, mainY, mainX, height, color(0, 0, 255), 4, 2);
+  right = new Section(mainX, 0, width, progress.endY, color(0, 255, 0), 1, 5);
+  bottom = new Section(fileLauncherEndX, mainY, width, height, color(0, 0, 255), 5, 2);
   
-  progressStart = progress.endX * .2;
-  progressEnd = progress.endX * .8;
+  int progressBuffer = int(progress.w * .1);
+  progressStart = progress.startX + progressBuffer;
+  progressEnd = progress.endX -progressBuffer;
   progressY = progress.startY + progress.h * .3;
   
   // top row of bottom section
@@ -53,12 +55,22 @@ void setup() {
   lowVol = new SliderH("Low Frequency Volume", 0, 100, 1, 0, bottom, 5);
   midVol = new SliderH("Mid Frequency Volume", 0, 100, 2, 0, bottom, 10);
   highVol = new SliderH("High Frequency Volume", 0, 100, 3, 0, bottom, 20);
+  speed = new SliderH("Play Speed", .1, 2, 4, 0, bottom, .1);
+  speed.slideX = 1; // start with speed at 1 instead of middle of slider
   
   // bottom row of bottom section
-  speed = new SliderH("Play Speed", .1, 2, 0, 1, bottom, .1);
-  speed.slideX = 1; // start with speed at 1 instead of middle of slider
-  pitch = new SliderH("Pitch", 0, 10, 1, 1, bottom, .5);
-  reverb = new SliderH("Reverb", 0, 10, 2, 1, bottom, 1);
+  totalReverb = new SliderH("Total Reverb", 0, 10, 0, 1, bottom, 1);
+  lowReverb = new SliderH("Low Frequency Reverb", 0, 10, 1, 1, bottom, 1);
+  midReverb = new SliderH("Mid Frequency Reverb", 0, 10, 2, 1, bottom, 1);
+  highReverb = new SliderH("High Frequency Reverb", 0, 10, 3, 1, bottom, 1);
+  
+  // buttons in right section
+  mode1 = new Button("Default", 0, 0, right);
+  mode2 = new Button("Mode 2", 0, 1, right);
+  mode3 = new Button("Mode 3", 0, 2, right);
+  mode4 = new Button("Mode 4", 0, 3, right);
+  mode5 = new Button("Mode 5", 0, 4, right);
+  
   
   
   
@@ -92,10 +104,18 @@ void draw() {
   lowVol.display();
   midVol.display();
   highVol.display();
-  
   speed.display();
-  pitch.display();
-  reverb.display();
+  
+  totalReverb.display();
+  lowReverb.display();
+  midReverb.display();
+  highReverb.display();
+  
+  mode1.display();
+  mode2.display();
+  mode3.display();
+  mode4.display();
+  mode5.display();
   
   //playPause.display();
 
@@ -138,18 +158,36 @@ void draw() {
     // if (pitch.mouseIn() && active == "pitch") {
     //   pitch.move(mouseX);
     // }
-    if (reverb.mouseIn() && active == "reverb") {
-      reverb.move(mouseX);
-      float val = map(reverb.slideX, reverb.min, reverb.max, 0, 1);
-      println("reverb", val);
+    if (totalReverb.mouseIn() && active == "totalReverb") {
+      totalReverb.move(mouseX);
+      float val = map(totalReverb.slideX, totalReverb.min, totalReverb.max, 0, 1);
+      println("totalReverb", val);
       ac.masterReverb(val);
+    }
+    if (lowReverb.mouseIn() && active == "lowReverb") {
+      lowReverb.move(mouseX);
+      float val = map(lowReverb.slideX, lowReverb.min, lowReverb.max, 0, 1);
+      println("lowReverb", val);
+      ac.lowReverb(val);
+    }
+    if (midReverb.mouseIn() && active == "midReverb") {
+      midReverb.move(mouseX);
+      float val = map(midReverb.slideX, midReverb.min, midReverb.max, 0, 1);
+      println("midReverb", val);
+      ac.midReverb(val);
+    }
+    if (highReverb.mouseIn() && active == "highReverb") {
+      highReverb.move(mouseX);
+      float val = map(highReverb.slideX, highReverb.min, highReverb.max, 0, 1);
+      println("highReverb", val);
+      ac.highReverb(val);
     }
   }
   
   textAlign(CENTER);
   fill(255);
   text("Main", main.centerX, main.centerY);
-  text("Right", right.centerX, right.centerY);
+  //text("Right", right.centerX, right.centerY);
   //text("Bottom", bottom.centerX, bottom.centerY);
   
   // progress bar
@@ -250,6 +288,7 @@ void mouseReleased() {
 
   // pause button
   if (inPause() && active == "pause") {
+    paused = !paused;
     ac.pause();
   }
 
@@ -298,8 +337,11 @@ void mousePressed() {
   if (midVol.mouseIn()) active = "midVol";
   if (highVol.mouseIn()) active = "highlVol";
   if (speed.mouseIn()) active = "speed";
-  if (pitch.mouseIn()) active = "pitch";
-  if (reverb.mouseIn()) active = "reverb";
+  if (lowReverb.mouseIn()) active = "lowReverb";
+  if (midReverb.mouseIn()) active = "midReverb";
+  if (highReverb.mouseIn()) active = "highReverb";
+  //if (pitch.mouseIn()) active = "pitch";
+  if (totalReverb.mouseIn()) active = "totalReverb";
   if (inPause()) active = "pause";
   if (inProgress()) active = "progress";
   if (inForward()) active = "forward";
