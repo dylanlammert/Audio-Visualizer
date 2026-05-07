@@ -1,4 +1,15 @@
-float mainX, mainY;
+/**
+  TODO
+  -------------------
+  * change buttons to work off of the overButton helper function 
+    remember to change the cursor(HAND || ARROW) when overButton
+  * change the playControls to fit its section
+
+
+
+
+*/
+float mainX, mainY, fileLauncherEndX;
 Boolean paused;
 Section main, progress, right, bottom, corner;
 SliderH totalVol, lowVol, midVol, highVol; // total, low frequency, mid frequency, and high frequency volume
@@ -8,21 +19,27 @@ String active;
 float progressStart, progressEnd, progressY;
 float duration;
 float t, scrubVal;
-
+FileLauncherUI fileLauncher;
+Theme colorTheme;
+PImage openFolder;
 
 void setup() {
-  //size(1600, 1000);
-  fullScreen();
+  size(1600, 1000);
+  surface.setResizable(true);
+  //fullScreen();
   mainX = width * .8;
   mainY = height * .75;
   textAlign(CENTER);
   paused = true;
+  fileLauncherEndX = 300;
   
-  
-  main = new Section(0, 0, mainX, mainY - 80, color(255, 0, 0), 1, 1);
-  progress = new Section(0, main.endY, mainX, mainY, color(0), 1, 1);
+  openFolder = loadImage("folderOpen.png");
+  colorTheme = new Theme();
+  fileLauncher = new FileLauncherUI(0, 0, fileLauncherEndX, height, color(40,40,40), 1, 1 );
+  main = new Section(fileLauncherEndX, 0, mainX, mainY - 80, color(255, 0, 0), 1, 1);
+  progress = new Section(fileLauncherEndX, main.endY, mainX, mainY, color(0), 1, 1);
   right = new Section(mainX, 0, width, height, color(0, 255, 0), 2, 2);
-  bottom = new Section(0, mainY, mainX, height, color(0, 0, 255), 4, 2);
+  bottom = new Section(fileLauncherEndX, mainY, mainX, height, color(0, 0, 255), 4, 2);
   
   progressStart = progress.endX * .2;
   progressEnd = progress.endX * .8;
@@ -51,6 +68,7 @@ void setup() {
 
 void draw() {
   
+  fileLauncher.display();
   main.display();
   right.display();
   bottom.display();
@@ -164,6 +182,33 @@ Boolean inBackward() {
   return (mouseX >= progress.centerX - 45 && mouseX <= progress.centerX - 25 && mouseY <= progressY + 30 && mouseY >= progressY + 15);
 }
 
+/**
+  @brief helper function to determine if the user is hovering over a button
+  @param int left this is the box's starting x 
+  @param int top this is the box's starting y
+  @param int diameter the diameter of a circle button initialized to -1 if it is a rect button
+  @param int boxLength this is the width of the box set to -1 if circle
+  @param int boxHeight this is the box height set to -1 if circle
+*/
+boolean overButton(int left, int top, int diameter, int boxLength, int boxHeight) {
+        float disX = left - mouseX;
+        float disY = top - mouseY;
+        if(boxLength == -1){
+            if (sqrt(sq(disX) + sq(disY)) < diameter/2) {
+              return true;
+            
+            }else return false;
+        }else {
+            if(mouseX >= left && mouseX <= left + boxLength){
+            if(mouseY >= top && mouseY <= top + boxHeight) {
+              return true;
+
+            }else return false;
+            } else return false;
+        }
+  
+}
+
 void mouseReleased() {
 
   // pause button
@@ -174,6 +219,22 @@ void mouseReleased() {
       paused = !paused;
     }
   }
+
+  if(overButton(fileLauncher.currentButtonX, fileLauncher.currentButtonY, -1, fileLauncher.currentButtonWidth, fileLauncher.currentButtonHeight)){
+            switch(fileLauncher.currentButton) {
+                case("open file button"):
+                  println("you are selecting a new folder");
+                  fileLauncher.selectFunction();
+                  break;
+                case("new project"):
+                  println("opening new project");
+                  fileLauncher.selectFunction();
+                  break;
+                case("individual file"):
+                  fileLauncher.currentFile = fileLauncher.potentialCurrentFile;
+                  println("current file: " + fileLauncher.currentFile.getAbsolutePath());
+            }
+        }
   
   // progress bar
   if (inProgress() && active == "progress") { 
@@ -205,4 +266,26 @@ void mousePressed() {
   if (inProgress()) active = "progress";
   if (inForward()) active = "forward";
   if (inBackward()) active = "backward";
+}
+/*
+void fileSelected(File selection) {
+        if(selection == null) {
+            println("Window has closed or the user hit cancel.");
+        } else{
+          fileLauncher.currentFile = selection.getAbsolutePath();
+            println("User selected" + selection.getAbsolutePath());
+        }
+    }
+*/
+void folderSelected(File selection) {
+  if (selection == null) {
+    println("Window was closed or the user hit cancel.");
+  } else {
+    println("User selected " + selection.getAbsolutePath());
+    // set the accessableFiles array
+    fileLauncher.setAccessableFiles(fileLauncher.getFolderContents(selection));
+    // set currentFolder path to selection.getAbsoulutePath
+    fileLauncher.currentFolder = selection;
+    // grab all audio files from within the folder
+  }
 }
