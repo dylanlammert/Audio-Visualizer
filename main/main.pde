@@ -144,7 +144,6 @@ void draw() {
     if (reverb.mouseIn() && active == "reverb") {
       reverb.move(mouseX);
       float val = map(reverb.slideX, reverb.min, reverb.max, 0, 1);
-      println("reverb", val);
       ac.masterReverb(val);
     }
   }
@@ -269,6 +268,7 @@ void mouseReleased() {
                 case("individual file"):
                   fileLauncher.currentFile = fileLauncher.potentialCurrentFile;
                   println("current file: " + fileLauncher.currentFile.getAbsolutePath());
+                  ac.loadSong(fileLauncher.currentFile.getAbsolutePath());
                   
             }
         }
