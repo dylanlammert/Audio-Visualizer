@@ -174,10 +174,7 @@ class AudioController
         for (int i = 0; i < smooth.length; i++) smooth[i] = 0;
         for (int i = 0; i < peak.length; i++) peak[i] = .5;
          
-        println("song chosen ", filePath);
         audio.loop();
-        
-        println("O: " ,  out.getFormat(), "A: ", audio.getMetaData());
     }
 
     
@@ -304,7 +301,6 @@ class AudioController
     {
         strength = constrain(strength,0,1);
         strength = map(strength, 0, 1, -6, 6);
-        println("strength", strength);
         fullGain.setValue(strength);
     }
 
@@ -312,7 +308,6 @@ class AudioController
     {
         strength = constrain(strength,0,1);
         strength = map(strength, 0, 1, -6, 6);
-        println("strength", strength);
         lGain.setValue(strength);
     }
 
@@ -320,14 +315,12 @@ class AudioController
     {
         strength = constrain(strength,0,1);
         strength = map(strength, 0, 1, -6, 6);
-        println("strength", strength);
         mGain.setValue(strength);
     }
     void highGain(float strength)
     {
         strength = constrain(strength,0,1);
         strength = map(strength, 0, 1, -6, 6);
-        println("strength", strength);
         hGain.setValue(strength);
     }
 
@@ -389,7 +382,6 @@ class AudioController
 
     void set_speed (float sp)   //updates speed. Currently will distort pitch.
     {
-        println(sp);
         tick.value.setLastValue(sp);
     }
 
@@ -398,6 +390,7 @@ class AudioController
         percent = constrain(percent, 0.0, 1.0);
         int time = int(percent * (audio.position()/audio.length()));
         audio.cue(time); // automatically rescales. 
+        audio.play();
     }
 
     
