@@ -23,6 +23,8 @@ FileLauncherUI fileLauncher;
 Theme colorTheme;
 PImage openFolder;
 
+AudioController ac;
+
 void setup() {
   size(1600, 1000);
   surface.setResizable(true);
@@ -32,6 +34,7 @@ void setup() {
   textAlign(CENTER);
   paused = true;
   fileLauncherEndX = 300;
+  
   
   openFolder = loadImage("folderOpen.png");
   colorTheme = new Theme();
@@ -55,15 +58,26 @@ void setup() {
   speed = new SliderH("Play Speed", .1, 2, 0, 1, bottom, .1);
   speed.slideX = 1; // start with speed at 1 instead of middle of slider
   pitch = new SliderH("Pitch", 0, 10, 1, 1, bottom, .5);
-  reverb = new SliderH("Reverb", 0, 10, 2, 1, bottom, 5);
+  reverb = new SliderH("Reverb", 0, 10, 2, 1, bottom, 1);
   
-  duration = 120;  // replace with actual audio duration
+  
   
   font = createFont("Arial", 18);
   textFont(font);
   
+  
+
   t = 20;
-  scrubVal = 10;  // amount to scrub by with forward and backward buttons
+  scrubVal = 5000;  // amount to scrub by with forward and backward buttons
+
+
+  ac = new AudioController(this);
+  ac.loadSong("Still Feel - Half Alive.mp3");
+  ac.masterReverb(0);
+  ac.lowReverb(0);
+  ac.midReverb(0);
+  ac.highReverb(0);
+  duration = ac.get_duration();  // replace with actual audio duration
 }
 
 void draw() {
@@ -84,28 +98,51 @@ void draw() {
   reverb.display();
   
   //playPause.display();
+
+  t = ac.get_time();
   
   if (mousePressed) {
     if (totalVol.mouseIn()  && active == "totalVol") {
       totalVol.move(mouseX);
+      float val = map(totalVol.slideX, totalVol.min, totalVol.max, 0, 1);
+      println("total", val);
+      ac.masterGain(val);
     }
     if (lowVol.mouseIn() && active == "lowVol") {
       lowVol.move(mouseX);
+      lowVol.move(mouseX);
+      float val = map(lowVol.slideX, lowVol.min, lowVol.max, 0, 1);
+      println("low", val);
+      ac.lowGain(val);
     }
     if (midVol.mouseIn() && active == "midVol") {
       midVol.move(mouseX);
+      midVol.move(mouseX);
+      float val = map(midVol.slideX, midVol.min, midVol.max, 0, 1);
+      println("mid", val);
+      ac.midGain(val);
     }
     if (highVol.mouseIn() && active == "highlVol") {
       highVol.move(mouseX);
+      highVol.move(mouseX);
+      float val = map(highVol.slideX, highVol.min, highVol.max, 0, 1);
+      println("high", val);
+      ac.highGain(val);
     }
     if (speed.mouseIn() && active == "speed") {
       speed.move(mouseX);
+      float val = map(speed.slideX, speed.min, speed.max, 0, 2);
+      println("speed", val);
+      ac.set_speed(val);
     }
-    if (pitch.mouseIn() && active == "pitch") {
-      pitch.move(mouseX);
-    }
+    // if (pitch.mouseIn() && active == "pitch") {
+    //   pitch.move(mouseX);
+    // }
     if (reverb.mouseIn() && active == "reverb") {
       reverb.move(mouseX);
+      float val = map(reverb.slideX, reverb.min, reverb.max, 0, 1);
+      println("reverb", val);
+      ac.masterReverb(val);
     }
   }
   
@@ -141,14 +178,14 @@ void draw() {
   
   // progress bar text
   text("0:00", progressStart, progressY + 20);
-  text(timeString(duration), progressEnd, progressY + 20);
+  text(timeString(duration/1000), progressEnd, progressY + 20);
   if (inProgress()) {
     float mouseT = map(mouseX, progressStart, progressEnd, 0, duration);
-    text(timeString(mouseT), mouseX, progressY - 5);
+    text(timeString(mouseT/1000), mouseX, progressY - 5);
     stroke(200);
     strokeWeight(3);
     line(progressStart, progressY, mouseX, progressY);
-  } else text(timeString(t), map(t, 0, duration, progressStart, progressEnd), progressY - 5);
+  } else text(timeString(t/1000), map(t, 0, duration, progressStart, progressEnd), progressY - 5);
   
   // current progress line
   stroke(255);
@@ -213,11 +250,7 @@ void mouseReleased() {
 
   // pause button
   if (inPause() && active == "pause") {
-    if (paused) {
-      paused = !paused;
-    } else {
-      paused = !paused;
-    }
+    ac.pause();
   }
 
   if(overButton(fileLauncher.currentButtonX, fileLauncher.currentButtonY, -1, fileLauncher.currentButtonWidth, fileLauncher.currentButtonHeight)){
@@ -239,16 +272,20 @@ void mouseReleased() {
   
   // progress bar
   if (inProgress() && active == "progress") { 
-    float mouseT = map(mouseX, progressStart, progressEnd, 0, duration);
+    float mouseT = map(mouseX, progressStart, progressEnd, 0, 1);
     t = mouseT;
+    ac.jump(t);
   } 
   
   if (inForward() && active == "forward") { 
-    t = constrain(t + scrubVal, 0, duration);
+    //t = constrain(t + scrubVal, 0, duration);
+    ac.offset_time((int)scrubVal);
   } 
   
   if (inBackward() && active == "backward") { 
-    t = constrain(t - scrubVal, 0, duration);
+    //t = constrain(t - scrubVal, 0, duration);
+    println("t", t);
+    ac.offset_time((int)-scrubVal);
   } 
   
   active = "";
